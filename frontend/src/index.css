@@ -1,0 +1,251 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 215 28% 12%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 215 28% 12%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 215 28% 12%;
+
+  --primary: 175 70% 14%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 210 16% 96%;
+  --secondary-foreground: 215 28% 17%;
+
+  --muted: 210 16% 97%;
+  --muted-foreground: 215 10% 40%;
+
+  --accent: 32 90% 44%;
+  --accent-foreground: 0 0% 100%;
+
+  --success: 142 71% 35%;
+  --success-foreground: 0 0% 100%;
+
+  --warning: 38 92% 48%;
+  --warning-foreground: 26 30% 12%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 214 18% 90%;
+  --input: 214 18% 90%;
+  --ring: 175 70% 14%;
+
+  --radius: 0.5rem;
+
+  --sidebar-background: 0 0% 100%;
+  --sidebar-foreground: 215 28% 16%;
+  --sidebar-primary: 175 70% 14%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 175 25% 95%;
+  --sidebar-accent-foreground: 175 70% 14%;
+  --sidebar-border: 214 18% 91%;
+  --sidebar-ring: 175 70% 14%;
+
+  --chart-1: 175 55% 28%;
+  --chart-2: 32 90% 48%;
+  --chart-3: 215 25% 45%;
+  --chart-4: 199 60% 42%;
+  --chart-5: 0 72% 52%;
+}
+
+.dark {
+  --background: 222 30% 7%;
+  --foreground: 210 20% 96%;
+
+  --card: 222 27% 10%;
+  --card-foreground: 210 20% 96%;
+
+  --popover: 222 27% 10%;
+  --popover-foreground: 210 20% 96%;
+
+  --primary: 173 65% 45%;
+  --primary-foreground: 222 30% 7%;
+
+  --secondary: 222 20% 16%;
+  --secondary-foreground: 210 20% 92%;
+
+  --muted: 222 20% 15%;
+  --muted-foreground: 215 15% 65%;
+
+  --accent: 199 89% 58%;
+  --accent-foreground: 222 30% 7%;
+
+  --success: 142 60% 45%;
+  --success-foreground: 0 0% 100%;
+
+  --warning: 38 92% 55%;
+  --warning-foreground: 26 30% 10%;
+
+  --destructive: 0 63% 55%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 222 20% 20%;
+  --input: 222 20% 20%;
+  --ring: 173 65% 45%;
+
+  --sidebar-background: 222 35% 6%;
+  --sidebar-foreground: 210 20% 90%;
+  --sidebar-primary: 173 65% 45%;
+  --sidebar-primary-foreground: 222 35% 6%;
+  --sidebar-accent: 222 25% 13%;
+  --sidebar-accent-foreground: 210 20% 96%;
+  --sidebar-border: 222 25% 16%;
+  --sidebar-ring: 173 65% 45%;
+
+  --chart-1: 173 65% 48%;
+  --chart-2: 199 89% 58%;
+  --chart-3: 38 92% 55%;
+  --chart-4: 262 65% 68%;
+  --chart-5: 0 70% 62%;
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+
+  --radius-sm: calc(var(--radius) - 0.35rem);
+  --radius-md: calc(var(--radius) - 0.2rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.3rem);
+
+  --font-display: "Archivo", "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+
+  --animate-fade-in: fade-in 0.4s ease-out;
+  --animate-slide-in: slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      transform: translateX(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white text-foreground font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display tracking-tight;
+  }
+
+  ::selection {
+    @apply bg-primary/20 text-primary;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/25 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+}
+
+@layer utilities {
+  .page-fade-in {
+    animation: fade-in 0.35s ease-out;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .bg-grid-pattern {
+    background-image:
+      linear-gradient(hsl(var(--foreground) / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--foreground) / 0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+}

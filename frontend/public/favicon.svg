@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" role="img" aria-label="LojaDeCarro">
+  <rect width="40" height="40" fill="#0B3D3A"/>
+  <path
+    d="M8 26.5h24l-2.2-6.2c-.3-.9-1.1-1.5-2-1.5H12.2c-.9 0-1.7.6-2 1.5L8 26.5Z"
+    fill="#F4F7F6"
+  />
+  <path d="M13 19h14l-1.6-4.2c-.2-.6-.8-1-1.4-1H16c-.6 0-1.2.4-1.4 1L13 19Z" fill="#C5D5D2"/>
+  <circle cx="14" cy="26.5" r="2.4" fill="#0B3D3A" stroke="#F4F7F6" strokeWidth="1.2"/>
+  <circle cx="26" cy="26.5" r="2.4" fill="#0B3D3A" stroke="#F4F7F6" strokeWidth="1.2"/>
+  <path d="M8 28.5h24" stroke="#D97706" strokeWidth="1.5"/>
+</svg>

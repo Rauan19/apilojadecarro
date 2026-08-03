@@ -1,0 +1,378 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  STORE_ADMIN
+  SELLER
+}
+
+enum CompanyStatus {
+  ACTIVE
+  BLOCKED
+  INACTIVE
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+  MAINTENANCE
+}
+
+enum FuelType {
+  FLEX
+  GASOLINE
+  ETHANOL
+  DIESEL
+  ELECTRIC
+  HYBRID
+  GNV
+}
+
+enum Transmission {
+  MANUAL
+  AUTOMATIC
+  CVT
+  DCT
+}
+
+enum LeadOrigin {
+  WHATSAPP
+  SITE
+  MANUAL
+}
+
+enum LeadStatus {
+  NEW
+  ATTENDING
+  NEGOTIATION
+  SALE
+  LOST
+}
+
+enum ProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum ScheduleStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+model SubscriptionPlan {
+  id           String    @id @default(uuid())
+  name         String
+  slug         String    @unique
+  description  String?
+  priceMonthly Float     @default(0)
+  features     String    @default("[]") // JSON string[]
+  maxVehicles  Int?
+  maxUsers     Int?
+  active       Boolean   @default(true)
+  sortOrder    Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  companies Company[]
+
+  @@map("subscription_plans")
+}
+
+model Company {
+  id        String        @id @default(uuid())
+  name      String
+  slug      String        @unique
+  document  String?
+  email     String
+  phone     String?
+  address   String?
+  city      String?
+  state     String?
+  zipCode   String?
+  logo      String?
+  website   String?
+  planId    String?
+  status    CompanyStatus @default(ACTIVE)
+  settings  String? // JSON string for SQLite compatibility
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  plan       SubscriptionPlan? @relation(fields: [planId], references: [id])
+  users      User[]
+  vehicles   Vehicle[]
+  customers  Customer[]
+  leads      Lead[]
+  proposals  Proposal[]
+  schedules  Schedule[]
+  apiTokens  ApiToken[]
+  apiLogs    ApiLog[]
+  sellers    Seller[]
+
+  @@map("companies")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  companyId String?
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  active    Boolean  @default(true)
+  phone     String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company        Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  refreshTokens  RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  seller         Seller?
+  customers      Customer[]     @relation("SellerCustomers")
+  leads          Lead[]         @relation("SellerLeads")
+  proposals      Proposal[]     @relation("SellerProposals")
+  createdVehicles Vehicle[]     @relation("VehicleCreator")
+
+  @@index([companyId])
+  @@index([email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("password_reset_tokens")
+}
+
+model Seller {
+  id        String   @id @default(uuid())
+  companyId String
+  userId    String   @unique
+  commission Float?  @default(0)
+  notes     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("sellers")
+}
+
+model Vehicle {
+  id           String        @id @default(uuid())
+  companyId    String
+  createdById  String?
+  brand        String
+  model        String
+  version      String?
+  year         Int
+  yearModel    Int
+  price        Float
+  mileage      Int           @default(0)
+  plate        String?
+  renavam      String?
+  fuel         FuelType      @default(FLEX)
+  transmission Transmission  @default(MANUAL)
+  color        String?
+  doors        Int           @default(4)
+  description  String?
+  optionals    String? // JSON array as string
+  status       VehicleStatus @default(AVAILABLE)
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  company   Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy User?          @relation("VehicleCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  images    VehicleImage[]
+  leads     Lead[]
+  proposals Proposal[]
+  schedules Schedule[]
+
+  @@index([companyId])
+  @@index([status])
+  @@index([brand, model])
+  @@map("vehicles")
+}
+
+model VehicleImage {
+  id        String   @id @default(uuid())
+  vehicleId String
+  companyId String
+  url       String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([companyId])
+  @@map("vehicle_images")
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  companyId String
+  sellerId  String?
+  name      String
+  phone     String?
+  email     String?
+  city      String?
+  state     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  seller    User?      @relation("SellerCustomers", fields: [sellerId], references: [id], onDelete: SetNull)
+  leads     Lead[]
+  proposals Proposal[]
+
+  @@index([companyId])
+  @@index([sellerId])
+  @@map("customers")
+}
+
+model Lead {
+  id         String     @id @default(uuid())
+  companyId  String
+  sellerId   String?
+  customerId String?
+  vehicleId  String?
+  name       String
+  phone      String?
+  email      String?
+  origin     LeadOrigin @default(MANUAL)
+  status     LeadStatus @default(NEW)
+  notes      String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  seller   User?     @relation("SellerLeads", fields: [sellerId], references: [id], onDelete: SetNull)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  vehicle  Vehicle?  @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([status])
+  @@index([sellerId])
+  @@map("leads")
+}
+
+model Proposal {
+  id         String         @id @default(uuid())
+  companyId  String
+  vehicleId  String
+  customerId String
+  sellerId   String?
+  value      Float
+  status     ProposalStatus @default(PENDING)
+  notes      String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  vehicle  Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  seller   User?    @relation("SellerProposals", fields: [sellerId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([status])
+  @@map("proposals")
+}
+
+model Schedule {
+  id        String         @id @default(uuid())
+  companyId String
+  vehicleId String?
+  name      String
+  phone     String?
+  email     String?
+  date      DateTime
+  notes     String?
+  status    ScheduleStatus @default(PENDING)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([date])
+  @@map("schedules")
+}
+
+model ApiToken {
+  id         String    @id @default(uuid())
+  companyId  String
+  name       String
+  token      String    @unique
+  active     Boolean   @default(true)
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  logs    ApiLog[]
+
+  @@index([companyId])
+  @@index([token])
+  @@map("api_tokens")
+}
+
+model ApiLog {
+  id           String   @id @default(uuid())
+  companyId    String?
+  apiTokenId   String?
+  endpoint     String
+  method       String
+  ip           String?
+  statusCode   Int?
+  responseTime Int?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  company  Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  apiToken ApiToken? @relation(fields: [apiTokenId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([createdAt])
+  @@map("api_logs")
+}

@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build
+dist/
+build/
+**/dist/
+
+# Env
+.env
+.env.local
+**/.env
+!**/.env.example
+
+# Database
+backend/prisma/*.db
+backend/prisma/*.db-journal
+
+# Uploads
+backend/uploads/**
+!backend/uploads/.gitkeep
+
+# Logs / IDE
+*.log
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Coverage
+coverage/
+.turbo/
