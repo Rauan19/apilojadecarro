@@ -14,6 +14,27 @@ npm run start:dev
 - API: http://localhost:3000/api
 - Swagger: http://localhost:3000/docs
 
+### VPS / produção
+
+O Docker sobe **só o Postgres**. A API Nest roda com Node.
+
+Se a VPS tiver Compose antigo (`docker-compose` com hífen), os scripts `db:*` já tentam os dois.
+
+```bash
+cd backend
+cp .env.example .env   # ajuste JWT, URLs e DATABASE_URL
+npm ci
+npm run db:up          # sobe Postgres na porta 65432
+# se falhar: apt install docker-compose  OU  docker-compose up -d
+npx prisma migrate deploy
+npx ts-node prisma/seed.ts   # só na 1ª vez
+npm run build
+npm run start:prod
+# ou: pm2 start dist/main.js --name lojadecarro-api
+```
+
+Erro `Can't reach database server at 127.0.0.1:65432` = Postgres não está rodando. Confira com `docker ps` / `docker-compose ps`.
+
 ## Frontend
 
 ```bash
