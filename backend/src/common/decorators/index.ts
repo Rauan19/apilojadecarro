@@ -24,6 +24,7 @@ export const CompanyId = createParamDecorator(
     const request = ctx.switchToHttp().getRequest();
     return (
       request.companyContext?.companyId ??
+      request.query?.companyId ??
       request.user?.companyId ??
       null
     );

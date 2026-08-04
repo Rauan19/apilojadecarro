@@ -87,6 +87,16 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
 );
 SelectTrigger.displayName = "SelectTrigger";
 
+function getNodeText(node: React.ReactNode): string {
+  if (node == null || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(getNodeText).join("");
+  if (React.isValidElement<{ children?: React.ReactNode }>(node)) {
+    return getNodeText(node.props.children);
+  }
+  return "";
+}
+
 function SelectValue({ placeholder }: { placeholder?: string }) {
   const ctx = useSelectContext();
   const label = ctx.value ? ctx.labels[ctx.value] : undefined;
@@ -109,27 +119,33 @@ const SelectContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
 
     React.useEffect(() => {
       if (!ctx.open) return;
-      const onMouseDown = (e: MouseEvent) => {
+      const onPointerDown = (e: PointerEvent) => {
         const target = e.target as Node;
         if (contentRef.current?.contains(target)) return;
         if (ctx.triggerRef.current?.contains(target)) return;
         ctx.setOpen(false);
       };
       const onKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Escape") ctx.setOpen(false);
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          ctx.setOpen(false);
+        }
       };
-      const onScroll = () => ctx.setOpen(false);
-      document.addEventListener("mousedown", onMouseDown);
+      const onScroll = (e: Event) => {
+        if (contentRef.current?.contains(e.target as Node)) return;
+        ctx.setOpen(false);
+      };
+      document.addEventListener("pointerdown", onPointerDown);
       document.addEventListener("keydown", onKeyDown);
       window.addEventListener("scroll", onScroll, true);
       window.addEventListener("resize", onScroll);
       return () => {
-        document.removeEventListener("mousedown", onMouseDown);
+        document.removeEventListener("pointerdown", onPointerDown);
         document.removeEventListener("keydown", onKeyDown);
         window.removeEventListener("scroll", onScroll, true);
         window.removeEventListener("resize", onScroll);
       };
-    }, [ctx, ctx.open]);
+    }, [ctx.open, ctx.setOpen, ctx.triggerRef]);
 
     return createPortal(
       <div
@@ -144,11 +160,13 @@ const SelectContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
           left: pos?.left ?? -9999,
           width: pos?.width,
           display: ctx.open ? "block" : "none",
+          pointerEvents: ctx.open ? "auto" : "none",
         }}
         className={cn(
-          "z-50 max-h-64 overflow-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-fade-in",
+          "z-[100] max-h-64 overflow-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-fade-in",
           className
         )}
+        onPointerDown={(e) => e.stopPropagation()}
         {...props}
       >
         {children}
@@ -166,13 +184,13 @@ interface SelectItemProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
   ({ className, value, children, disabled, ...props }, ref) => {
-    const ctx = useSelectContext();
-    const selected = ctx.value === value;
-    const labelText = typeof children === "string" ? children : undefined;
+    const { value: selectedValue, onValueChange, setOpen, registerLabel } = useSelectContext();
+    const selected = selectedValue === value;
+    const labelText = getNodeText(children);
 
     React.useEffect(() => {
-      if (labelText !== undefined) ctx.registerLabel(value, labelText);
-    }, [value, labelText, ctx]);
+      if (labelText) registerLabel(value, labelText);
+    }, [value, labelText, registerLabel]);
 
     return (
       <div
@@ -182,8 +200,8 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
         aria-disabled={disabled}
         onClick={() => {
           if (disabled) return;
-          ctx.onValueChange(value);
-          ctx.setOpen(false);
+          onValueChange(value);
+          setOpen(false);
         }}
         className={cn(
           "relative flex cursor-pointer select-none items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-secondary focus:bg-secondary",

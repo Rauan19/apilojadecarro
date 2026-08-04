@@ -45,6 +45,36 @@ export class CreateVehicleDto {
   @Min(0)
   price: number;
 
+  @ApiPropertyOptional({
+    example: 99900,
+    description: 'Preço original ("de"). Se maior que price, exibe desconto na vitrine.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  originalPrice?: number | null;
+
+  @ApiPropertyOptional({
+    example: 75000,
+    description: 'Valor pago na compra do veículo (custo interno, opcional).',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  purchasePrice?: number | null;
+
+  @ApiPropertyOptional({
+    example: 89900,
+    description: 'Valor efetivo da venda (opcional; usado com status SOLD para lucro).',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  soldPrice?: number | null;
+
   @ApiPropertyOptional({ example: 45000, default: 0 })
   @IsOptional()
   @Type(() => Number)

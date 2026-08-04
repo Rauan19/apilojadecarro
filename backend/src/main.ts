@@ -28,8 +28,38 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
+  const frontendUrl = config.get<string>('FRONTEND_URL', 'http://localhost:5173');
+  const configuredOrigins = frontendUrl
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  const isDev = config.get<string>('NODE_ENV') !== 'production';
+  const devOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
+    'http://127.0.0.1:5175',
+  ];
+
+  const allowedOrigins = Array.from(
+    new Set([...configuredOrigins, ...(isDev ? devOrigins : [])]),
+  );
+
   app.enableCors({
-    origin: config.get<string>('FRONTEND_URL', 'http://localhost:5173'),
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      // requests sem Origin (curl, mobile, same-origin)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error(`Origin ${origin} not allowed by CORS`), false);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
@@ -84,7 +114,7 @@ async function bootstrap(): Promise<void> {
       'api-token',
     )
     .addTag('Auth', 'Autenticação e sessão')
-    .addTag('Companies', 'Clientes SaaS — lojas e concessionárias (Super Admin)')
+    .addTag('Companies', 'Clientes SaaS: lojas e concessionárias (Super Admin)')
     .addTag('Users', 'Gestão de usuários')
     .addTag('Vehicles', 'Estoque de veículos')
     .addTag('Customers', 'Clientes finais da loja (compradores)')

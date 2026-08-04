@@ -2,26 +2,27 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Tema global inspirado em marketplace Webmotors */
 :root {
-  --background: 0 0% 100%;
-  --foreground: 215 28% 12%;
+  --background: 220 14% 96%;
+  --foreground: 220 20% 14%;
 
   --card: 0 0% 100%;
-  --card-foreground: 215 28% 12%;
+  --card-foreground: 220 20% 14%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 215 28% 12%;
+  --popover-foreground: 220 20% 14%;
 
-  --primary: 175 70% 14%;
+  --primary: 357 78% 50%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 210 16% 96%;
-  --secondary-foreground: 215 28% 17%;
+  --secondary: 220 14% 94%;
+  --secondary-foreground: 220 20% 18%;
 
-  --muted: 210 16% 97%;
-  --muted-foreground: 215 10% 40%;
+  --muted: 220 14% 94%;
+  --muted-foreground: 220 10% 42%;
 
-  --accent: 32 90% 44%;
+  --accent: 357 78% 50%;
   --accent-foreground: 0 0% 100%;
 
   --success: 142 71% 35%;
@@ -33,49 +34,49 @@
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 214 18% 90%;
-  --input: 214 18% 90%;
-  --ring: 175 70% 14%;
+  --border: 220 13% 88%;
+  --input: 220 13% 88%;
+  --ring: 357 78% 50%;
 
-  --radius: 0.5rem;
+  --radius: 0.375rem;
 
   --sidebar-background: 0 0% 100%;
-  --sidebar-foreground: 215 28% 16%;
-  --sidebar-primary: 175 70% 14%;
+  --sidebar-foreground: 220 20% 16%;
+  --sidebar-primary: 357 78% 50%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 175 25% 95%;
-  --sidebar-accent-foreground: 175 70% 14%;
-  --sidebar-border: 214 18% 91%;
-  --sidebar-ring: 175 70% 14%;
+  --sidebar-accent: 357 78% 96%;
+  --sidebar-accent-foreground: 357 78% 40%;
+  --sidebar-border: 220 13% 90%;
+  --sidebar-ring: 357 78% 50%;
 
-  --chart-1: 175 55% 28%;
-  --chart-2: 32 90% 48%;
-  --chart-3: 215 25% 45%;
-  --chart-4: 199 60% 42%;
-  --chart-5: 0 72% 52%;
+  --chart-1: 357 78% 50%;
+  --chart-2: 220 20% 35%;
+  --chart-3: 142 55% 40%;
+  --chart-4: 38 90% 48%;
+  --chart-5: 199 70% 45%;
 }
 
 .dark {
-  --background: 222 30% 7%;
+  --background: 222 22% 8%;
   --foreground: 210 20% 96%;
 
-  --card: 222 27% 10%;
+  --card: 222 20% 11%;
   --card-foreground: 210 20% 96%;
 
-  --popover: 222 27% 10%;
+  --popover: 222 20% 11%;
   --popover-foreground: 210 20% 96%;
 
-  --primary: 173 65% 45%;
-  --primary-foreground: 222 30% 7%;
+  --primary: 357 78% 55%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 222 20% 16%;
+  --secondary: 222 16% 16%;
   --secondary-foreground: 210 20% 92%;
 
-  --muted: 222 20% 15%;
-  --muted-foreground: 215 15% 65%;
+  --muted: 222 16% 15%;
+  --muted-foreground: 215 12% 65%;
 
-  --accent: 199 89% 58%;
-  --accent-foreground: 222 30% 7%;
+  --accent: 357 70% 45%;
+  --accent-foreground: 0 0% 100%;
 
   --success: 142 60% 45%;
   --success-foreground: 0 0% 100%;
@@ -86,24 +87,24 @@
   --destructive: 0 63% 55%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 222 20% 20%;
-  --input: 222 20% 20%;
-  --ring: 173 65% 45%;
+  --border: 222 16% 20%;
+  --input: 222 16% 20%;
+  --ring: 357 78% 55%;
 
-  --sidebar-background: 222 35% 6%;
+  --sidebar-background: 222 24% 7%;
   --sidebar-foreground: 210 20% 90%;
-  --sidebar-primary: 173 65% 45%;
-  --sidebar-primary-foreground: 222 35% 6%;
-  --sidebar-accent: 222 25% 13%;
-  --sidebar-accent-foreground: 210 20% 96%;
-  --sidebar-border: 222 25% 16%;
-  --sidebar-ring: 173 65% 45%;
+  --sidebar-primary: 357 78% 55%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 357 40% 16%;
+  --sidebar-accent-foreground: 357 80% 85%;
+  --sidebar-border: 222 16% 16%;
+  --sidebar-ring: 357 78% 55%;
 
-  --chart-1: 173 65% 48%;
-  --chart-2: 199 89% 58%;
+  --chart-1: 357 78% 55%;
+  --chart-2: 199 80% 55%;
   --chart-3: 38 92% 55%;
-  --chart-4: 262 65% 68%;
-  --chart-5: 0 70% 62%;
+  --chart-4: 142 60% 45%;
+  --chart-5: 262 60% 65%;
 }
 
 @theme inline {
@@ -156,10 +157,10 @@
   --color-chart-4: hsl(var(--chart-4));
   --color-chart-5: hsl(var(--chart-5));
 
-  --radius-sm: calc(var(--radius) - 0.35rem);
-  --radius-md: calc(var(--radius) - 0.2rem);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 0.3rem);
+  --radius-sm: calc(var(--radius) - 0.125rem);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 0.125rem);
+  --radius-xl: calc(var(--radius) + 0.375rem);
 
   --font-display: "Archivo", "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
@@ -197,11 +198,13 @@
 
   html {
     scroll-behavior: smooth;
+    overflow-x: clip;
   }
 
   body {
-    @apply bg-white text-foreground font-sans antialiased;
+    @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    overflow-x: clip;
   }
 
   h1,
@@ -240,6 +243,38 @@
 
   .text-balance {
     text-wrap: balance;
+  }
+
+  .store-price {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: #2e2e2e;
+  }
+
+  .store-card {
+    background: #fff;
+    border: 1px solid #e6e6e6;
+    border-radius: 0.375rem;
+    overflow: hidden;
+    transition:
+      box-shadow 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .store-card:hover {
+      border-color: #d0d0d0;
+      box-shadow: 0 4px 16px -6px rgb(0 0 0 / 0.18);
+    }
+  }
+
+  .safe-pb {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  .safe-pt {
+    padding-top: max(0px, env(safe-area-inset-top));
   }
 
   .bg-grid-pattern {

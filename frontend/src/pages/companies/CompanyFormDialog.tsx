@@ -30,7 +30,7 @@ import {
   requiredEmailSchema,
 } from "@/lib/form-schemas";
 import { formatCurrency } from "@/lib/utils";
-import type { Company } from "@/types";
+import type { Company, CreateCompanyResult } from "@/types";
 
 const schema = z.object({
   name: z.string().min(2, "Informe o nome do cliente"),
@@ -39,6 +39,8 @@ const schema = z.object({
   document: optionalDocumentSchema,
   phone: optionalPhoneSchema,
   website: optionalWebsiteSchema,
+  customDomain: z.string().optional(),
+  primaryColor: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   state: optionalStateSchema,
@@ -104,6 +106,8 @@ export function CompanyFormDialog({
         document: company?.document ? maskDocument(company.document) : "",
         phone: company?.phone ? maskPhone(company.phone) : "",
         website: company?.website ?? "",
+        customDomain: company?.customDomain ?? "",
+        primaryColor: "#e10600",
         address: company?.address ?? "",
         city: company?.city ?? "",
         state: company?.state ?? "",
@@ -117,11 +121,13 @@ export function CompanyFormDialog({
   }, [open, company, reset]);
 
   const mutation = useMutation({
-    mutationFn: (values: FormValues) => {
+    mutationFn: async (values: FormValues): Promise<Company | CreateCompanyResult> => {
+      const color = values.primaryColor?.trim() || "#e10600";
       const base = {
         name: values.name,
         slug: values.slug || undefined,
         website: normalizeWebsite(values.website),
+        customDomain: values.customDomain?.trim() || undefined,
         document: values.document || undefined,
         phone: values.phone || undefined,
         address: values.address || undefined,
@@ -138,6 +144,9 @@ export function CompanyFormDialog({
 
       return companiesService.create({
         ...base,
+        settings: JSON.stringify({
+          theme: { primaryColor: color, secondaryColor: color },
+        }),
         adminName: values.adminName || undefined,
         adminEmail: values.adminEmail || undefined,
         adminPassword: values.adminPassword!,
@@ -149,10 +158,11 @@ export function CompanyFormDialog({
       queryClient.invalidateQueries({ queryKey: ["users"] });
       onOpenChange(false);
 
-      if (!isEditing && result && "passwordChangeUrl" in result) {
+      if (!isEditing && "passwordChangeUrl" in result) {
+        const created = result as CreateCompanyResult;
         onCreatedLink?.({
-          url: result.passwordChangeUrl,
-          adminEmail: result.admin.email,
+          url: created.passwordChangeUrl,
+          adminEmail: created.admin.email,
         });
       }
     },
@@ -188,6 +198,24 @@ export function CompanyFormDialog({
             <div className="space-y-1.5">
               <Label htmlFor="slug">Slug (opcional)</Label>
               <Input id="slug" {...register("slug")} placeholder="auto-center-sp" />
+              <p className="text-[11px] text-muted-foreground">Vitrine em /loja/seu-slug</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="primaryColor">Cor da marca</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  className="h-10 w-12 cursor-pointer rounded border border-border bg-white p-1"
+                  {...register("primaryColor")}
+                />
+                <Input {...register("primaryColor")} placeholder="#e10600" className="font-mono" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="customDomain">Domínio próprio (opcional)</Label>
+              <Input id="customDomain" {...register("customDomain")} placeholder="www.minhaloja.com.br" />
             </div>
 
             <div className="space-y-1.5">
@@ -219,18 +247,24 @@ export function CompanyFormDialog({
 
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Plano</Label>
-              <Select value={watch("planId")} onValueChange={(value) => setValue("planId", value, { shouldValidate: true })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um plano" />
-                </SelectTrigger>
-                <SelectContent>
-                  {plans.map((plan) => (
-                    <SelectItem key={plan.id} value={plan.id}>
-                      {plan.name} — {formatCurrency(plan.priceMonthly)}/mês
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {plans.length === 0 ? (
+                <p className="rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
+                  Nenhum plano ativo. Crie planos em <strong>Planos</strong> antes de cadastrar o cliente.
+                </p>
+              ) : (
+                <Select value={watch("planId") || undefined} onValueChange={(value) => setValue("planId", value, { shouldValidate: true })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um plano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plans.map((plan) => (
+                      <SelectItem key={plan.id} value={plan.id}>
+                        {`${plan.name} · ${formatCurrency(plan.priceMonthly)}/mês`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               {errors.planId && <p className="text-xs text-destructive">{errors.planId.message}</p>}
             </div>
 

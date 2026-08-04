@@ -73,6 +73,11 @@ export class CompaniesService {
 
     const slug = await this.generateUniqueSlug(dto.name, dto.slug);
     const passwordHash = await this.authService.hashPassword(dto.adminPassword);
+    const customDomain = this.normalizeDomain(dto.customDomain);
+
+    if (customDomain) {
+      await this.assertDomainAvailable(customDomain);
+    }
 
     const created = await this.prisma.$transaction(async (tx) => {
       const company = await tx.company.create({
@@ -88,8 +93,11 @@ export class CompaniesService {
           zipCode: dto.zipCode,
           logo: dto.logo,
           website: dto.website,
+          customDomain,
           status: dto.status ?? CompanyStatus.ACTIVE,
-          settings: dto.settings,
+          settings: dto.settings ?? JSON.stringify({
+            theme: { primaryColor: '#e10600', secondaryColor: '#b00500' },
+          }),
           ...(dto.planId ? { planId: dto.planId } : {}),
         },
         include: { plan: true },
@@ -206,10 +214,21 @@ export class CompaniesService {
       await this.assertPlanExists(dto.planId);
     }
 
-    const { planId, ...rest } = dto;
+    const { planId, customDomain, ...rest } = dto;
+    const normalizedDomain =
+      customDomain !== undefined
+        ? this.normalizeDomain(customDomain)
+        : undefined;
+
+    if (normalizedDomain) {
+      await this.assertDomainAvailable(normalizedDomain, id);
+    }
 
     const updated = await this.companiesRepository.update(id, {
       ...rest,
+      ...(normalizedDomain !== undefined
+        ? { customDomain: normalizedDomain }
+        : {}),
       ...(planId !== undefined
         ? planId
           ? { plan: { connect: { id: planId } } }
@@ -309,6 +328,36 @@ export class CompaniesService {
       throw new BadRequestException(
         `O campo ${field} deve conter um JSON válido`,
       );
+    }
+  }
+
+  private normalizeDomain(value?: string | null): string | null {
+    if (value == null) {
+      return null;
+    }
+    const trimmed = value.trim().toLowerCase();
+    if (!trimmed) {
+      return null;
+    }
+    return trimmed
+      .replace(/^https?:\/\//, '')
+      .replace(/\/.*$/, '')
+      .replace(/:\d+$/, '')
+      .replace(/^www\./, '');
+  }
+
+  private async assertDomainAvailable(
+    domain: string,
+    excludeCompanyId?: string,
+  ): Promise<void> {
+    const taken = await this.prisma.company.findFirst({
+      where: {
+        customDomain: domain,
+        ...(excludeCompanyId ? { NOT: { id: excludeCompanyId } } : {}),
+      },
+    });
+    if (taken) {
+      throw new ConflictException('Este domínio já está em uso por outra loja');
     }
   }
 

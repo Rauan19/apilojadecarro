@@ -3,7 +3,6 @@ import {
   isValidCep,
   isValidDocument,
   isValidPhone,
-  isValidPlate,
   isValidState,
   isValidWebsite,
   onlyDigits,
@@ -40,10 +39,11 @@ export const optionalCepSchema = emptyOr(isValidCep, "CEP inválido. Use 00000-0
 
 export const optionalStateSchema = emptyOr(isValidState, "UF inválida. Ex: SP");
 
-export const optionalPlateSchema = emptyOr(
-  isValidPlate,
-  "Placa inválida. Use ABC-1234 ou ABC1D23"
-);
+/** Placa livre no cadastro: opcional, sem bloquear o salvamento */
+export const optionalPlateSchema = z
+  .string()
+  .optional()
+  .transform((v) => (v?.trim() ? v.trim().toUpperCase() : ""));
 
 export const optionalWebsiteSchema = emptyOr(
   isValidWebsite,

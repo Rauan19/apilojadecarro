@@ -45,6 +45,12 @@ export interface DashboardData {
   revenue: {
     total: number;
     acceptedProposals: number;
+    vehicleSales: {
+      revenue: number;
+      cost: number;
+      profit: number;
+      soldWithPrice: number;
+    };
   };
   global?: {
     companies: number;
@@ -293,10 +299,16 @@ export class DashboardService {
   private async getCompanyRevenue(companyId?: string): Promise<{
     total: number;
     acceptedProposals: number;
+    vehicleSales: {
+      revenue: number;
+      cost: number;
+      profit: number;
+      soldWithPrice: number;
+    };
   }> {
     const where = companyId ? { companyId } : {};
 
-    const [aggregate, acceptedProposals] = await Promise.all([
+    const [aggregate, acceptedProposals, soldVehicles] = await Promise.all([
       this.prisma.proposal.aggregate({
         where: { ...where, status: ProposalStatus.ACCEPTED },
         _sum: { value: true },
@@ -304,11 +316,31 @@ export class DashboardService {
       this.prisma.proposal.count({
         where: { ...where, status: ProposalStatus.ACCEPTED },
       }),
+      this.prisma.vehicle.findMany({
+        where: { ...where, status: VehicleStatus.SOLD, soldPrice: { not: null } },
+        select: { purchasePrice: true, soldPrice: true },
+      }),
     ]);
+
+    let revenue = 0;
+    let cost = 0;
+    for (const vehicle of soldVehicles) {
+      const sold = Number(vehicle.soldPrice ?? 0);
+      revenue += sold;
+      if (vehicle.purchasePrice != null) {
+        cost += Number(vehicle.purchasePrice);
+      }
+    }
 
     return {
       total: aggregate._sum.value ?? 0,
       acceptedProposals,
+      vehicleSales: {
+        revenue,
+        cost,
+        profit: revenue - cost,
+        soldWithPrice: soldVehicles.length,
+      },
     };
   }
 

@@ -39,7 +39,7 @@ export function AppHeader({ onMenuClick }: { onMenuClick: () => void }) {
           <Menu className="h-5 w-5" />
         </Button>
         <div className="min-w-0 lg:hidden">
-          <BrandLogo showWordmark className="scale-90 origin-left" />
+          <BrandLogo preferStoreBrand showWordmark className="scale-90 origin-left" />
         </div>
       </div>
 

@@ -49,7 +49,7 @@ export function DashboardPage() {
   if (isLoading || !data) {
     return (
       <div>
-        <PageHeader title="Dashboard" description="Visão geral da sua operação" />
+        <PageHeader title="Início" description="Visão geral da sua operação" />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <CardSkeleton key={i} />
@@ -139,6 +139,20 @@ export function DashboardPage() {
               value={formatCurrency(revenue.total)}
               icon={DollarSign}
               accent="success"
+            />
+            <StatCard
+              label="Faturamento (vendas)"
+              value={formatCurrency(revenue.vehicleSales?.revenue ?? 0)}
+              icon={DollarSign}
+              accent="primary"
+            />
+            <StatCard
+              label="Lucro (compra × venda)"
+              value={formatCurrency(revenue.vehicleSales?.profit ?? 0)}
+              icon={DollarSign}
+              accent={
+                (revenue.vehicleSales?.profit ?? 0) >= 0 ? "success" : "warning"
+              }
             />
             <StatCard label="Veículos vendidos" value={formatNumber(counts.vehicles.sold)} icon={Car} accent="secondary" />
             <StatCard label="Vendedores ativos" value={formatNumber(counts.sellers)} icon={Users2} accent="primary" />

@@ -23,11 +23,12 @@ Sistema SaaS multi-tenant production-ready para gerenciamento de lojas de veícu
 ```
 projeto/
 ├── backend/          # API NestJS
-├── frontend/         # Painel React + site público
+├── frontend/         # Painel React + vitrine pública `/loja`
 ├── docs/             # Documentação adicional
 └── README.md
 ```
 
+A vitrine `/loja` consome a API pública. Sites externos de cada loja também podem usar os mesmos endpoints.
 ## Pré-requisitos
 
 - Node.js 20+ (recomendado 22+)
@@ -93,7 +94,8 @@ Empresa demo: **AutoPrime Veículos** (`autoprme`)
 | Variável | Descrição |
 |----------|-----------|
 | `VITE_API_URL` | Base da API (`http://localhost:3000/api`) |
-| `VITE_PUBLIC_API_TOKEN` | Token opcional para a loja pública `/loja` |
+| `VITE_DEMO_API_TOKEN` | Token da API pública para a vitrine `/loja` |
+| `VITE_PUBLIC_API_TOKEN` | Token alternativo da vitrine (tem prioridade sobre o demo) |
 
 ## Prisma e banco
 

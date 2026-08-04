@@ -1,11 +1,20 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
+  IsEnum,
   IsOptional,
   IsString,
   IsUUID,
   MinLength,
 } from 'class-validator';
+
+export enum PublicLeadInterestType {
+  INTEREST = 'INTEREST',
+  FINANCING = 'FINANCING',
+  CASH = 'CASH',
+  TRADE_IN = 'TRADE_IN',
+  VISIT = 'VISIT',
+}
 
 export class CreatePublicLeadDto {
   @ApiProperty({ example: 'Maria Souza' })
@@ -23,7 +32,18 @@ export class CreatePublicLeadDto {
   @IsEmail()
   email?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    enum: PublicLeadInterestType,
+    example: PublicLeadInterestType.FINANCING,
+  })
+  @IsOptional()
+  @IsEnum(PublicLeadInterestType)
+  interestType?: PublicLeadInterestType;
+
+  @ApiPropertyOptional({
+    example: 'Entrada de R$ 20.000, deseja 48x',
+    description: 'Detalhes de financiamento, troca ou mensagem',
+  })
   @IsOptional()
   @IsString()
   notes?: string;

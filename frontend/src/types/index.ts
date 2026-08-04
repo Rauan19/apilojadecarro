@@ -94,6 +94,7 @@ export interface Company {
   zipCode: string | null;
   logo: string | null;
   website: string | null;
+  customDomain?: string | null;
   planId: string | null;
   plan?: SubscriptionPlan | null;
   status: CompanyStatus;
@@ -187,6 +188,9 @@ export interface Vehicle {
   year: number;
   yearModel: number;
   price: number;
+  originalPrice?: number | null;
+  purchasePrice?: number | null;
+  soldPrice?: number | null;
   mileage: number;
   plate: string | null;
   renavam: string | null;
@@ -224,6 +228,7 @@ export interface VehicleRef {
   model: string;
   year: number;
   price: number;
+  originalPrice?: number | null;
   status?: VehicleStatus;
 }
 
@@ -309,6 +314,7 @@ export interface ApiLog {
 export interface CompanySettings {
   id: string;
   name: string;
+  slug: string;
   phone: string | null;
   email: string;
   address: string | null;
@@ -317,6 +323,7 @@ export interface CompanySettings {
   zipCode: string | null;
   logo: string | null;
   website: string | null;
+  customDomain: string | null;
   settings: Record<string, unknown> | null;
 }
 
@@ -353,6 +360,12 @@ export interface DashboardData {
   revenue: {
     total: number;
     acceptedProposals: number;
+    vehicleSales: {
+      revenue: number;
+      cost: number;
+      profit: number;
+      soldWithPrice: number;
+    };
   };
   global?: {
     companies: number;
@@ -382,6 +395,7 @@ export interface CreateCompanyPayload {
   zipCode?: string;
   logo?: string;
   website?: string;
+  customDomain?: string;
   planId?: string;
   status?: CompanyStatus;
   settings?: string;
@@ -447,6 +461,9 @@ export interface CreateVehiclePayload {
   year: number;
   yearModel: number;
   price: number;
+  originalPrice?: number | null;
+  purchasePrice?: number | null;
+  soldPrice?: number | null;
   mileage?: number;
   plate?: string;
   renavam?: string;
@@ -523,6 +540,7 @@ export interface UpdateSettingsPayload {
   zipCode?: string;
   logo?: string;
   website?: string;
+  customDomain?: string | null;
   settings?: string;
 }
 
@@ -537,10 +555,12 @@ export interface CreateApiTokenPayload {
 
 export interface PublicCompanyInfo {
   name: string;
+  slug: string;
   logo: string | null;
   phone: string | null;
   email: string;
   city: string | null;
+  customDomain: string | null;
   settings: Record<string, unknown> | null;
 }
 
@@ -558,10 +578,18 @@ export interface PublicVehicleFilters {
   color?: string;
 }
 
+export type PublicLeadInterestType =
+  | "INTEREST"
+  | "FINANCING"
+  | "CASH"
+  | "TRADE_IN"
+  | "VISIT";
+
 export interface CreatePublicLeadPayload {
   name: string;
   phone?: string;
   email?: string;
+  interestType?: PublicLeadInterestType;
   notes?: string;
   vehicleId?: string;
 }

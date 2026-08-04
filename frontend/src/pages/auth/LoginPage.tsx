@@ -55,24 +55,24 @@ export function LoginPage() {
   };
 
   return (
-    <div className="grid min-h-screen bg-white lg:grid-cols-[1.05fr_0.95fr]">
+    <div className="grid min-h-screen bg-background lg:grid-cols-[1.05fr_0.95fr]">
       <div className="relative hidden overflow-hidden border-r border-border lg:block">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
             backgroundImage:
-              "linear-gradient(105deg, rgba(11,61,58,0.92) 0%, rgba(11,61,58,0.72) 42%, rgba(11,18,32,0.55) 100%), url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1600&q=80')",
+              "linear-gradient(105deg, rgba(227,28,35,0.92) 0%, rgba(227,28,35,0.72) 42%, rgba(26,29,35,0.7) 100%), url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1600&q=80')",
           }}
         />
         <div className="relative z-10 flex h-full flex-col justify-between p-10 text-white">
           <BrandLogo inverted subtitle="Gestão para revendas" markClassName="h-10 w-10" />
 
           <div className="max-w-md space-y-4">
-            <h1 className="font-display text-4xl font-semibold uppercase leading-[1.05] tracking-[0.04em]">
-              LojaDeCarro
+            <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight">
+              Compre e venda com o ritmo do marketplace
             </h1>
-            <p className="max-w-sm text-sm leading-relaxed text-white/80">
-              Estoque, leads e equipe de vendas em um painel feito para concessionárias — sem enrolação.
+            <p className="max-w-sm text-sm leading-relaxed text-white/85">
+              Estoque, leads e equipe de vendas em um painel no estilo Webmotors, direto ao ponto.
             </p>
           </div>
 
@@ -87,7 +87,7 @@ export function LoginPage() {
           </div>
 
           <div className="mb-8 space-y-1.5">
-            <h2 className="font-display text-2xl font-semibold uppercase tracking-[0.04em]">Entrar</h2>
+            <h2 className="font-display text-2xl font-bold tracking-tight">Entrar</h2>
             <p className="text-sm text-muted-foreground">Use o e-mail e a senha da sua conta.</p>
           </div>
 

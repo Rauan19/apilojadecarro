@@ -1,18 +1,37 @@
 import * as React from "react";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Save } from "lucide-react";
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  Globe,
+  ImagePlus,
+  Loader2,
+  Palette,
+  Save,
+  Share2,
+  Store,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CardSkeleton } from "@/components/shared/LoadingPage";
 import { settingsService } from "@/services/settings.service";
+import { uploadsService } from "@/services/uploads.service";
 import { getApiErrorMessage } from "@/services/api";
 import { useCompany } from "@/hooks/useCompany";
+import { buildBrandThemeStyle, normalizeHexColor } from "@/utils/color";
+import { resolveMediaUrl } from "@/utils/mediaUrl";
+import { MAX_STORE_BANNERS, parseStoreBanners, type StoreBanner } from "@/utils/storeBanners";
 
 interface FormValues {
   name: string;
@@ -23,27 +42,54 @@ interface FormValues {
   state: string;
   zipCode: string;
   website: string;
+  customDomain: string;
+  primaryColor: string;
   about: string;
   whatsapp: string;
   instagram: string;
   facebook: string;
+  youtube: string;
+  tiktok: string;
   businessHours: string;
+}
+
+function getStorePublicUrl(slug: string, customDomain?: string | null) {
+  if (customDomain?.trim()) {
+    const host = customDomain.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+    return `https://${host}`;
+  }
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  return `${origin}/loja/${slug}`;
 }
 
 export function SettingsPage() {
   const { companyId } = useCompany();
   const queryClient = useQueryClient();
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const bannerFileRef = React.useRef<HTMLInputElement>(null);
+  const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
+  const [logoPath, setLogoPath] = React.useState<string | null>(null);
+  const [banners, setBanners] = React.useState<StoreBanner[]>([]);
+  const [copied, setCopied] = React.useState(false);
+  const [tab, setTab] = React.useState("empresa");
 
   const { data, isLoading } = useQuery({
     queryKey: ["settings", companyId],
     queryFn: () => settingsService.get(companyId),
   });
 
-  const { register, handleSubmit, reset } = useForm<FormValues>();
+  const { register, handleSubmit, reset, watch, setValue } = useForm<FormValues>({
+    defaultValues: { primaryColor: "#e10600" },
+  });
+
+  const primaryColor = watch("primaryColor");
+  const customDomain = watch("customDomain");
+  const brandPreview = buildBrandThemeStyle(primaryColor);
 
   React.useEffect(() => {
     if (data) {
       const settings = (data.settings ?? {}) as Record<string, any>;
+      const theme = settings.theme ?? {};
       reset({
         name: data.name ?? "",
         email: data.email ?? "",
@@ -53,22 +99,88 @@ export function SettingsPage() {
         state: data.state ?? "",
         zipCode: data.zipCode ?? "",
         website: data.website ?? "",
+        customDomain: data.customDomain ?? "",
+        primaryColor: normalizeHexColor(theme.primaryColor) ?? "#e10600",
         about: settings.about ?? "",
         whatsapp: settings.whatsapp ?? "",
         instagram: settings.social?.instagram ?? "",
         facebook: settings.social?.facebook ?? "",
+        youtube: settings.social?.youtube ?? "",
+        tiktok: settings.social?.tiktok ?? "",
         businessHours: settings.businessHours ?? "",
       });
+      setLogoPreview(resolveMediaUrl(data.logo) ?? data.logo);
+      setLogoPath(data.logo);
+      setBanners(parseStoreBanners(settings.banners));
     }
   }, [data, reset]);
+
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => uploadsService.uploadImage(file, companyId),
+    onSuccess: async (result) => {
+      const logoUrl = result.url;
+      setLogoPreview(resolveMediaUrl(logoUrl) ?? logoUrl);
+      setLogoPath(logoUrl);
+      try {
+        await settingsService.update({ logo: logoUrl }, companyId);
+        queryClient.invalidateQueries({ queryKey: ["settings"] });
+        queryClient.invalidateQueries({ queryKey: ["public-company"] });
+        toast.success("Logo atualizada. Já aparece no topo do painel e na vitrine.");
+      } catch (error) {
+        toast.success("Logo enviada. Clique em Salvar para confirmar.");
+        toast.error(getApiErrorMessage(error));
+      }
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
+  const bannerUploadMutation = useMutation({
+    mutationFn: (file: File) => uploadsService.uploadImage(file, companyId),
+    onSuccess: (result) => {
+      setBanners((prev) => {
+        if (prev.length >= MAX_STORE_BANNERS) {
+          toast.error(`Máximo de ${MAX_STORE_BANNERS} banners`);
+          return prev;
+        }
+        return [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            imageUrl: result.url,
+            title: "",
+            subtitle: "",
+            linkUrl: "",
+          },
+        ];
+      });
+      toast.success("Banner adicionado. Ajuste o texto e clique em Salvar.");
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
 
   const mutation = useMutation({
     mutationFn: (values: FormValues) => {
       const settingsPayload = JSON.stringify({
         about: values.about,
         whatsapp: values.whatsapp,
-        social: { instagram: values.instagram, facebook: values.facebook },
+        social: {
+          instagram: values.instagram,
+          facebook: values.facebook,
+          youtube: values.youtube,
+          tiktok: values.tiktok,
+        },
         businessHours: values.businessHours,
+        theme: {
+          primaryColor: normalizeHexColor(values.primaryColor) || "#e10600",
+        },
+        banners: banners.map((b, index) => ({
+          id: b.id,
+          imageUrl: b.imageUrl,
+          title: b.title?.trim() || undefined,
+          subtitle: b.subtitle?.trim() || undefined,
+          linkUrl: b.linkUrl?.trim() || undefined,
+          order: index,
+        })),
       });
       return settingsService.update(
         {
@@ -80,17 +192,31 @@ export function SettingsPage() {
           state: values.state,
           zipCode: values.zipCode,
           website: values.website,
+          customDomain: values.customDomain.trim() || null,
+          logo: logoPath ?? undefined,
           settings: settingsPayload,
         },
         companyId
       );
     },
     onSuccess: () => {
-      toast.success("Configurações atualizadas com sucesso");
+      toast.success("Configurações salvas. A cor vale na vitrine e no seu painel.");
       queryClient.invalidateQueries({ queryKey: ["settings"] });
+      queryClient.invalidateQueries({ queryKey: ["public-company"] });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
+
+  const copyStoreLink = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast.success("Link da loja copiado!");
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Não foi possível copiar o link");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -104,27 +230,96 @@ export function SettingsPage() {
     );
   }
 
-  return (
-    <div>
-      <PageHeader title="Configurações" description="Gerencie as informações da sua loja e da vitrine pública" />
+  const slug = data?.slug;
+  const storePath = slug ? `/loja/${slug}` : null;
+  const publicUrl = slug ? getStorePublicUrl(slug, customDomain || data?.customDomain) : null;
+  const hasCustomDomain = !!(customDomain || data?.customDomain)?.trim();
 
-      <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-6">
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Dados da empresa</CardTitle>
-              <CardDescription>Informações principais da sua loja</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Nome</Label>
-                <Input id="name" {...register("name")} />
+  return (
+    <div className="space-y-6 pb-20">
+      <PageHeader
+        title="Configurações"
+        description="Organize a loja por seções: dados, visual, vitrine e divulgação"
+      />
+
+      {/* Link para divulgar: sempre no topo */}
+      {publicUrl && storePath && (
+        <Card className="border-primary/25 bg-primary/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Share2 className="h-4 w-4 text-primary" />
+              Link da sua loja
+            </CardTitle>
+            <CardDescription>
+              {hasCustomDomain
+                ? "Você já tem domínio próprio. Use este endereço para divulgar."
+                : "Ainda sem domínio próprio? Copie este link e envie no WhatsApp, Instagram ou anúncios."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Input readOnly value={publicUrl} className="font-mono text-sm bg-white" />
+              <div className="flex w-full shrink-0 gap-2 sm:w-auto">
+                <Button type="button" className="flex-1 sm:flex-none" onClick={() => copyStoreLink(publicUrl)}>
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copied ? "Copiado" : "Copiar link"}
+                </Button>
+                <Button type="button" variant="outline" className="flex-1 sm:flex-none" asChild>
+                  <Link to={storePath} target="_blank">
+                    <ExternalLink className="h-4 w-4" />
+                    Abrir
+                  </Link>
+                </Button>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="email">E-mail</Label>
-                <Input id="email" type="email" {...register("email")} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+            </div>
+            {!hasCustomDomain && (
+              <p className="text-xs text-muted-foreground">
+                Caminho curto: <span className="font-mono font-medium text-foreground">{storePath}</span>
+                {" · "}
+                Domínio próprio fica na aba <button type="button" className="font-semibold text-primary underline-offset-2 hover:underline" onClick={() => setTab("dominio")}>Domínio</button>.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <form onSubmit={handleSubmit((values) => mutation.mutate(values))}>
+        <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+          <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:overflow-visible sm:px-0">
+            <TabsList className="inline-flex h-auto min-w-full w-max justify-start gap-1 bg-secondary/60 p-1 sm:flex sm:w-full sm:flex-wrap">
+              <TabsTrigger value="empresa" className="shrink-0 gap-1.5">
+                <Store className="h-3.5 w-3.5" /> Empresa
+              </TabsTrigger>
+              <TabsTrigger value="identidade" className="shrink-0 gap-1.5">
+                <Palette className="h-3.5 w-3.5" /> Identidade
+              </TabsTrigger>
+              <TabsTrigger value="vitrine" className="shrink-0 gap-1.5">
+                <Share2 className="h-3.5 w-3.5" /> Vitrine e redes
+              </TabsTrigger>
+              <TabsTrigger value="banners" className="shrink-0 gap-1.5">
+                <Upload className="h-3.5 w-3.5" /> Banners
+              </TabsTrigger>
+              <TabsTrigger value="dominio" className="shrink-0 gap-1.5">
+                <Globe className="h-3.5 w-3.5" /> Domínio
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="empresa" className="mt-0">
+            <Card>
+              <CardHeader>
+                <CardTitle>Dados da empresa</CardTitle>
+                <CardDescription>Informações cadastrais da loja</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="name">Nome</Label>
+                  <Input id="name" {...register("name")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">E-mail</Label>
+                  <Input id="email" type="email" {...register("email")} />
+                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="phone">Telefone</Label>
                   <Input id="phone" {...register("phone")} />
@@ -133,43 +328,139 @@ export function SettingsPage() {
                   <Label htmlFor="website">Website</Label>
                   <Input id="website" {...register("website")} />
                 </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="address">Endereço</Label>
-                <Input id="address" {...register("address")} />
-              </div>
-              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="address">Endereço</Label>
+                  <Input id="address" {...register("address")} />
+                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="city">Cidade</Label>
                   <Input id="city" {...register("city")} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="state">Estado</Label>
-                  <Input id="state" {...register("state")} maxLength={2} />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="state">Estado</Label>
+                    <Input id="state" {...register("state")} maxLength={2} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="zipCode">CEP</Label>
+                    <Input id="zipCode" {...register("zipCode")} />
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="zipCode">CEP</Label>
-                  <Input id="zipCode" {...register("zipCode")} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Vitrine pública</CardTitle>
-              <CardDescription>Informações exibidas na loja online</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="about">Sobre a loja</Label>
-                <Textarea id="about" {...register("about")} rows={4} placeholder="Conte um pouco sobre sua loja..." />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="whatsapp">WhatsApp (com DDI)</Label>
-                <Input id="whatsapp" {...register("whatsapp")} placeholder="5511999998888" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+          <TabsContent value="identidade" className="mt-0">
+            <Card>
+              <CardHeader>
+                <CardTitle>Identidade visual</CardTitle>
+                <CardDescription>Logo e cor da marca na vitrine pública</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label>Logo da loja</Label>
+                  <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+                    <div className="flex h-28 w-44 items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-secondary/30">
+                      {logoPreview ? (
+                        <img src={logoPreview} alt="Logo" className="max-h-full max-w-full object-contain p-2" />
+                      ) : (
+                        <ImagePlus className="h-8 w-8 text-muted-foreground/50" />
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) uploadMutation.mutate(file);
+                          e.target.value = "";
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={uploadMutation.isPending}
+                        onClick={() => fileRef.current?.click()}
+                      >
+                        {uploadMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ImagePlus className="h-4 w-4" />
+                        )}
+                        Enviar logo
+                      </Button>
+                      <p className="text-xs text-muted-foreground">PNG ou JPG, até 5 MB. Aparece grande no topo da vitrine.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="primaryColor">Cor dos botões</Label>
+                  <p className="text-xs text-muted-foreground">
+                    No estilo WebMotors: preço e textos ficam pretos. A cor da loja entra só em botões e destaques.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <input
+                      id="primaryColor"
+                      type="color"
+                      className="h-11 w-14 cursor-pointer rounded border border-border bg-white p-1"
+                      value={normalizeHexColor(primaryColor) ?? "#e10600"}
+                      onChange={(e) =>
+                        setValue("primaryColor", e.target.value, { shouldDirty: true, shouldValidate: true })
+                      }
+                    />
+                    <Input
+                      value={primaryColor ?? ""}
+                      onChange={(e) => setValue("primaryColor", e.target.value, { shouldDirty: true })}
+                      placeholder="#e10600"
+                      className="max-w-[10rem] font-mono"
+                    />
+                  </div>
+                  <div className="mt-3 space-y-3 rounded-lg border border-border p-3" style={brandPreview}>
+                    <p className="text-xs text-muted-foreground">Prévia:</p>
+                    <div className="rounded-md border border-[#e6e6e6] bg-white p-3">
+                      <p className="text-xs font-bold uppercase text-[#2e2e2e]">JEEP COMPASS</p>
+                      <p className="text-[11px] text-[#696969]">2.0 Longitude</p>
+                      <p className="mt-1 text-[11px] text-[#696969] line-through">R$ 149.900</p>
+                      <p className="text-lg font-bold text-[#2e2e2e]">R$ 132.900</p>
+                      <p className="text-[11px] font-bold text-[#e81123]">-11%</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" className="pointer-events-none font-bold">
+                        Buscar
+                      </Button>
+                      <Button type="button" className="pointer-events-none font-bold bg-[#25D366] text-white hover:bg-[#25D366]">
+                        WhatsApp
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="vitrine" className="mt-0">
+            <Card>
+              <CardHeader>
+                <CardTitle>Vitrine e redes sociais</CardTitle>
+                <CardDescription>Textos, WhatsApp e redes do footer da loja</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="about">Sobre a loja</Label>
+                  <Textarea id="about" {...register("about")} rows={4} placeholder="Conte um pouco sobre sua loja..." />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="whatsapp">WhatsApp (com DDI)</Label>
+                  <Input id="whatsapp" {...register("whatsapp")} placeholder="5511999998888" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="businessHours">Horário de funcionamento</Label>
+                  <Input id="businessHours" {...register("businessHours")} placeholder="Seg a Sex 9h–18h | Sáb 9h–13h" />
+                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="instagram">Instagram</Label>
                   <Input id="instagram" {...register("instagram")} placeholder="@sualoja" />
@@ -178,17 +469,158 @@ export function SettingsPage() {
                   <Label htmlFor="facebook">Facebook</Label>
                   <Input id="facebook" {...register("facebook")} placeholder="sualoja" />
                 </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="businessHours">Horário de funcionamento</Label>
-                <Input id="businessHours" {...register("businessHours")} placeholder="Seg a Sex 9h–18h | Sáb 9h–13h" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="youtube">YouTube</Label>
+                  <Input id="youtube" {...register("youtube")} placeholder="@sualoja ou URL" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="tiktok">TikTok</Label>
+                  <Input id="tiktok" {...register("tiktok")} placeholder="@sualoja" />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <div className="flex justify-end">
-          <Button type="submit" loading={mutation.isPending}>
+          <TabsContent value="banners" className="mt-0">
+            <Card>
+              <CardHeader>
+                <CardTitle>Banners da página inicial</CardTitle>
+                <CardDescription>
+                  Carrossel no topo da vitrine (até {MAX_STORE_BANNERS} imagens)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+                  <p className="font-semibold">Tamanho e proporção recomendados</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground">
+                    <li>
+                      Proporção ideal: <span className="font-medium text-foreground">5:1</span> (bem larga e baixa)
+                    </li>
+                    <li>
+                      Resolução sugerida: <span className="font-medium text-foreground">1920 × 384 px</span>
+                    </li>
+                    <li>
+                      Também funciona bem: <span className="font-medium text-foreground">1600 × 320 px</span>
+                    </li>
+                    <li>Evite imagens altas (quadradas ou 16:9 cheias); o banner na vitrine é baixo</li>
+                    <li>Formatos: JPG, PNG ou WebP. Deixe o assunto principal no centro da imagem</li>
+                  </ul>
+                </div>
+
+                <input
+                  ref={bannerFileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) bannerUploadMutation.mutate(file);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={bannerUploadMutation.isPending || banners.length >= MAX_STORE_BANNERS}
+                  onClick={() => bannerFileRef.current?.click()}
+                >
+                  {bannerUploadMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  Adicionar banner ({banners.length}/{MAX_STORE_BANNERS})
+                </Button>
+
+                {banners.length === 0 ? (
+                  <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+                    Sem banners ainda. Sem eles, a vitrine mostra o título padrão com a cor da loja.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {banners.map((banner, index) => (
+                      <div
+                        key={banner.id}
+                        className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-[160px_1fr_auto]"
+                      >
+                        <div className="aspect-[5/1] overflow-hidden rounded-md bg-secondary">
+                          <img src={banner.imageUrl} alt="" className="h-full w-full object-cover" />
+                        </div>
+                        <div className="space-y-2">
+                          <Input
+                            placeholder="Título do banner"
+                            value={banner.title ?? ""}
+                            onChange={(e) =>
+                              setBanners((prev) =>
+                                prev.map((b, i) => (i === index ? { ...b, title: e.target.value } : b))
+                              )
+                            }
+                          />
+                          <Input
+                            placeholder="Subtítulo (opcional)"
+                            value={banner.subtitle ?? ""}
+                            onChange={(e) =>
+                              setBanners((prev) =>
+                                prev.map((b, i) => (i === index ? { ...b, subtitle: e.target.value } : b))
+                              )
+                            }
+                          />
+                          <Input
+                            placeholder="Link ao clicar (opcional)"
+                            value={banner.linkUrl ?? ""}
+                            onChange={(e) =>
+                              setBanners((prev) =>
+                                prev.map((b, i) => (i === index ? { ...b, linkUrl: e.target.value } : b))
+                              )
+                            }
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-10 w-10 shrink-0 p-0 text-destructive"
+                          onClick={() => setBanners((prev) => prev.filter((_, i) => i !== index))}
+                          aria-label="Remover banner"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="dominio" className="mt-0">
+            <Card>
+              <CardHeader>
+                <CardTitle>Domínio próprio</CardTitle>
+                <CardDescription>
+                  Opcional. Enquanto não tiver, use o link da loja no topo da página para divulgar.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="customDomain">Domínio (sem http)</Label>
+                  <Input id="customDomain" {...register("customDomain")} placeholder="www.minhaloja.com.br" />
+                  <p className="text-xs text-muted-foreground">
+                    Depois de configurar o DNS apontando para o frontend, a vitrine abre direto neste domínio.
+                  </p>
+                </div>
+                {storePath && (
+                  <div className="rounded-lg border border-dashed border-border bg-secondary/30 p-4 text-sm">
+                    <p className="font-medium">Link atual (sem domínio próprio)</p>
+                    <p className="mt-1 font-mono text-muted-foreground">{publicUrl}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <div className="sticky bottom-0 z-10 mt-6 flex justify-end border-t border-border bg-background/95 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <Button type="submit" className="h-11 w-full font-bold sm:w-auto" loading={mutation.isPending}>
             <Save /> Salvar configurações
           </Button>
         </div>

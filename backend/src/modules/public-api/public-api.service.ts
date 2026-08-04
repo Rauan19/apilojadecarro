@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import {
+  CompanyStatus,
   LeadOrigin,
   Prisma,
   ScheduleStatus,
@@ -17,9 +18,39 @@ import { CreatePublicLeadDto } from './dto/create-public-lead.dto';
 import { CreatePublicScheduleDto } from './dto/create-public-schedule.dto';
 import { PublicVehicleFilterDto } from './dto/public-vehicle-filter.dto';
 
+const INTEREST_LABELS: Record<string, string> = {
+  INTEREST: 'Tenho interesse',
+  FINANCING: 'Simular financiamento',
+  CASH: 'Pagamento à vista',
+  TRADE_IN: 'Avaliar troca',
+  VISIT: 'Agendar visita',
+};
+
 @Injectable()
 export class PublicApiService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private readonly publicVehicleSelect = {
+    id: true,
+    brand: true,
+    model: true,
+    version: true,
+    year: true,
+    yearModel: true,
+    price: true,
+    originalPrice: true,
+    mileage: true,
+    fuel: true,
+    transmission: true,
+    color: true,
+    doors: true,
+    description: true,
+    optionals: true,
+    status: true,
+    createdAt: true,
+    updatedAt: true,
+    images: { orderBy: { order: 'asc' as const } },
+  };
 
   async findVehicles(
     companyId: string | null,
@@ -38,9 +69,7 @@ export class PublicApiService {
         skip,
         take: limit,
         orderBy: { [filters.sortBy ?? 'createdAt']: filters.sortOrder ?? 'desc' },
-        include: {
-          images: { orderBy: { order: 'asc' } },
-        },
+        select: this.publicVehicleSelect,
       }),
       this.prisma.vehicle.count({ where }),
     ]);
@@ -57,9 +86,7 @@ export class PublicApiService {
         companyId: companyId!,
         status: VehicleStatus.AVAILABLE,
       },
-      include: {
-        images: { orderBy: { order: 'asc' } },
-      },
+      select: this.publicVehicleSelect,
     });
 
     if (!vehicle) {
@@ -82,7 +109,7 @@ export class PublicApiService {
         name: dto.name,
         phone: dto.phone,
         email: dto.email,
-        notes: dto.notes,
+        notes: this.buildLeadNotes(dto),
         vehicleId: dto.vehicleId,
         origin: LeadOrigin.SITE,
       },
@@ -120,10 +147,12 @@ export class PublicApiService {
       where: { id: companyId! },
       select: {
         name: true,
+        slug: true,
         logo: true,
         phone: true,
         email: true,
         city: true,
+        customDomain: true,
         settings: true,
       },
     });
@@ -134,12 +163,72 @@ export class PublicApiService {
 
     return {
       name: company.name,
+      slug: company.slug,
       logo: company.logo,
       phone: company.phone,
       email: company.email,
       city: company.city,
+      customDomain: company.customDomain,
       settings: this.parseSettings(company.settings),
     };
+  }
+
+  async resolveActiveCompanyIdBySlug(slug: string): Promise<string> {
+    const company = await this.prisma.company.findFirst({
+      where: { slug, status: CompanyStatus.ACTIVE },
+      select: { id: true },
+    });
+
+    if (!company) {
+      throw new NotFoundException('Loja não encontrada');
+    }
+
+    return company.id;
+  }
+
+  async resolveByHost(host: string) {
+    const normalized = this.normalizeHost(host);
+    if (!normalized) {
+      throw new NotFoundException('Domínio inválido');
+    }
+
+    const companies = await this.prisma.company.findMany({
+      where: {
+        status: CompanyStatus.ACTIVE,
+        customDomain: { not: null },
+      },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        customDomain: true,
+      },
+    });
+
+    const match = companies.find(
+      (c) => c.customDomain && this.normalizeHost(c.customDomain) === normalized,
+    );
+
+    if (!match) {
+      throw new NotFoundException('Nenhuma loja encontrada para este domínio');
+    }
+
+    return {
+      id: match.id,
+      slug: match.slug,
+      name: match.name,
+      customDomain: match.customDomain,
+    };
+  }
+
+  normalizeHost(host: string): string {
+    return host
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/\/.*$/, '')
+      .replace(/:\d+$/, '')
+      .replace(/^www\./, '');
   }
 
   private requireCompanyId(companyId: string | null): asserts companyId is string {
@@ -229,5 +318,18 @@ export class PublicApiService {
     } catch {
       return null;
     }
+  }
+
+  private buildLeadNotes(dto: CreatePublicLeadDto): string | undefined {
+    const parts: string[] = [];
+    if (dto.interestType) {
+      parts.push(
+        `Tipo: ${INTEREST_LABELS[dto.interestType] ?? dto.interestType}`,
+      );
+    }
+    if (dto.notes?.trim()) {
+      parts.push(dto.notes.trim());
+    }
+    return parts.length ? parts.join('\n') : undefined;
   }
 }

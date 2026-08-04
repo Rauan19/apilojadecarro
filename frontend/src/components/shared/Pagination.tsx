@@ -17,25 +17,37 @@ export function Pagination({ meta, onPageChange }: PaginationProps) {
 
   return (
     <div className="flex flex-col items-center justify-between gap-3 border-t border-border px-1 py-4 sm:flex-row">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-center text-xs text-muted-foreground sm:text-left sm:text-sm">
         Mostrando <span className="font-medium text-foreground">{start}</span>–
         <span className="font-medium text-foreground">{end}</span> de{" "}
-        <span className="font-medium text-foreground">{total}</span> resultados
+        <span className="font-medium text-foreground">{total}</span>
       </p>
       <div className="flex items-center gap-1">
-        <Button variant="outline" size="icon" disabled={!hasPrevPage} onClick={() => onPageChange(1)}>
+        <Button
+          variant="outline"
+          size="icon"
+          className="hidden sm:inline-flex"
+          disabled={!hasPrevPage}
+          onClick={() => onPageChange(1)}
+        >
           <ChevronsLeft />
         </Button>
         <Button variant="outline" size="icon" disabled={!hasPrevPage} onClick={() => onPageChange(page - 1)}>
           <ChevronLeft />
         </Button>
-        <span className="min-w-20 px-2 text-center text-sm font-medium">
+        <span className="min-w-16 px-2 text-center text-sm font-medium sm:min-w-20">
           {page} / {totalPages}
         </span>
         <Button variant="outline" size="icon" disabled={!hasNextPage} onClick={() => onPageChange(page + 1)}>
           <ChevronRight />
         </Button>
-        <Button variant="outline" size="icon" disabled={!hasNextPage} onClick={() => onPageChange(totalPages)}>
+        <Button
+          variant="outline"
+          size="icon"
+          className="hidden sm:inline-flex"
+          disabled={!hasNextPage}
+          onClick={() => onPageChange(totalPages)}
+        >
           <ChevronsRight />
         </Button>
       </div>

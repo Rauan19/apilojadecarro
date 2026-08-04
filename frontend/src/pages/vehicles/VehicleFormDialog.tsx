@@ -1,10 +1,10 @@
 import * as React from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ImagePlus, Loader2, Plus, Upload, X } from "lucide-react";
+import { ImagePlus, Loader2, Plus, Search, Upload, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,34 +20,54 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { vehiclesService } from "@/services/vehicles.service";
+import { MAX_VEHICLE_IMAGES, vehiclesService } from "@/services/vehicles.service";
 import { getApiErrorMessage } from "@/services/api";
 import { useCompany } from "@/hooks/useCompany";
 import { fuelLabels, transmissionLabels, vehicleStatusLabels } from "@/utils/labels";
 import { API_URL } from "@/services/api";
-import { maskPlate, maskRenavam } from "@/lib/masks";
+import { isValidPlate, maskPlate, maskRenavam } from "@/lib/masks";
 import { optionalPlateSchema, optionalRenavamSchema } from "@/lib/form-schemas";
 import { MaskedInput } from "@/components/ui/masked-input";
+import { formatCurrency } from "@/lib/utils";
 import type { Vehicle } from "@/types";
 
-const schema = z.object({
-  brand: z.string().min(1, "Informe a marca"),
-  model: z.string().min(1, "Informe o modelo"),
-  version: z.string().optional(),
-  year: z.coerce.number().int().min(1900, "Ano inválido"),
-  yearModel: z.coerce.number().int().min(1900, "Ano inválido"),
-  price: z.coerce.number().min(0, "Preço inválido"),
-  mileage: z.coerce.number().int().min(0).optional(),
-  plate: optionalPlateSchema,
-  renavam: optionalRenavamSchema,
-  fuel: z.enum(["FLEX", "GASOLINE", "ETHANOL", "DIESEL", "ELECTRIC", "HYBRID", "GNV"]),
-  transmission: z.enum(["MANUAL", "AUTOMATIC", "CVT", "DCT"]),
-  color: z.string().optional(),
-  doors: z.coerce.number().int().min(1).optional(),
-  description: z.string().optional(),
-  status: z.enum(["AVAILABLE", "RESERVED", "SOLD", "MAINTENANCE"]),
-  notes: z.string().optional(),
-});
+const optionalMoney = z.preprocess((value) => {
+  if (value === "" || value === null || value === undefined) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}, z.number().min(0).nullable());
+
+const schema = z
+  .object({
+    brand: z.string().min(1, "Informe a marca"),
+    model: z.string().min(1, "Informe o modelo"),
+    version: z.string().optional(),
+    year: z.coerce.number().int().min(1900, "Ano inválido"),
+    yearModel: z.coerce.number().int().min(1900, "Ano inválido"),
+    price: z.coerce.number().min(0, "Preço inválido"),
+    originalPrice: optionalMoney,
+    purchasePrice: optionalMoney,
+    soldPrice: optionalMoney,
+    mileage: z.coerce.number().int().min(0).optional(),
+    plate: optionalPlateSchema,
+    renavam: optionalRenavamSchema,
+    fuel: z.enum(["FLEX", "GASOLINE", "ETHANOL", "DIESEL", "ELECTRIC", "HYBRID", "GNV"]),
+    transmission: z.enum(["MANUAL", "AUTOMATIC", "CVT", "DCT"]),
+    color: z.string().optional(),
+    doors: z.coerce.number().int().min(1).optional(),
+    description: z.string().optional(),
+    status: z.enum(["AVAILABLE", "RESERVED", "SOLD", "MAINTENANCE"]),
+    notes: z.string().optional(),
+  })
+  .superRefine((values, ctx) => {
+    if (values.originalPrice != null && values.originalPrice > 0 && values.originalPrice <= values.price) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["originalPrice"],
+        message: "O preço 'de' deve ser maior que o preço atual",
+      });
+    }
+  });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -80,7 +100,7 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
     setValue,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as Resolver<FormValues>,
     defaultValues: { fuel: "FLEX", transmission: "MANUAL", status: "AVAILABLE", doors: 4, mileage: 0 },
   });
 
@@ -94,6 +114,9 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
         year: vehicle?.year ?? new Date().getFullYear(),
         yearModel: vehicle?.yearModel ?? new Date().getFullYear(),
         price: vehicle?.price ?? 0,
+        originalPrice: vehicle?.originalPrice ?? null,
+        purchasePrice: vehicle?.purchasePrice ?? null,
+        soldPrice: vehicle?.soldPrice ?? null,
         mileage: vehicle?.mileage ?? 0,
         plate: vehicle?.plate ? maskPlate(vehicle.plate) : "",
         renavam: vehicle?.renavam ? maskRenavam(vehicle.renavam) : "",
@@ -124,7 +147,13 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
 
   const mutation = useMutation({
     mutationFn: (values: FormValues) => {
-      const payload = { ...values, optionals };
+      const payload = {
+        ...values,
+        originalPrice: values.originalPrice && values.originalPrice > 0 ? values.originalPrice : null,
+        purchasePrice: values.purchasePrice && values.purchasePrice > 0 ? values.purchasePrice : null,
+        soldPrice: values.soldPrice && values.soldPrice > 0 ? values.soldPrice : null,
+        optionals,
+      };
       return isEditing
         ? vehiclesService.update(vehicle!.id, payload, companyId)
         : vehiclesService.create(payload, companyId);
@@ -157,6 +186,29 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
+  const plateLookupMutation = useMutation({
+    mutationFn: (plate: string) => vehiclesService.lookupPlate(plate),
+    onSuccess: (data) => {
+      setValue("brand", data.brand, { shouldValidate: true });
+      setValue("model", data.model, { shouldValidate: true });
+      if (data.version) setValue("version", data.version);
+      if (data.year) setValue("year", data.year, { shouldValidate: true });
+      if (data.yearModel) setValue("yearModel", data.yearModel, { shouldValidate: true });
+      if (data.color) setValue("color", data.color);
+      if (data.fuel) setValue("fuel", data.fuel);
+      if (data.transmission) setValue("transmission", data.transmission);
+      if (data.doors) setValue("doors", data.doors);
+      if (data.fipePrice) setValue("price", data.fipePrice, { shouldValidate: true });
+      setValue("plate", maskPlate(data.plate), { shouldValidate: true });
+      toast.success(
+        data.source === "demo"
+          ? data.message ?? "Dados de demonstração preenchidos. Confira e ajuste."
+          : "Dados preenchidos pela placa. Confira e ajuste se necessário."
+      );
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
   const addOptional = () => {
     const value = optionalInput.trim();
     if (value && !optionals.includes(value)) {
@@ -164,6 +216,9 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
     }
     setOptionalInput("");
   };
+
+  const imageCount = currentVehicle?.images?.length ?? 0;
+  const canAddPhotos = imageCount < MAX_VEHICLE_IMAGES;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -185,6 +240,49 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
 
           <TabsContent value="dados">
             <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
+              <div className="rounded-lg border border-border bg-secondary/30 p-3 sm:p-4">
+                <Label htmlFor="plate">Consultar pela placa</Label>
+                <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
+                  <MaskedInput
+                    id="plate"
+                    placeholder="ABC-1234 ou ABC1D23"
+                    value={watch("plate") ?? ""}
+                    mask={maskPlate}
+                    onValueChange={(v) => setValue("plate", v)}
+                    className="sm:max-w-xs"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={
+                      plateLookupMutation.isPending ||
+                      !(watch("plate") ?? "").replace(/[^a-zA-Z0-9]/g, "")
+                    }
+                    onClick={() => {
+                      const plate = watch("plate") ?? "";
+                      if (!isValidPlate(plate)) {
+                        toast.error(
+                          "Placa inválida. Use a cinza antiga (ABC-1234) ou Mercosul (ABC1D23)."
+                        );
+                        return;
+                      }
+                      plateLookupMutation.mutate(plate);
+                    }}
+                  >
+                    {plateLookupMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                    Consultar placa
+                  </Button>
+                </div>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Aceita placa cinza antiga (ABC-1234) e Mercosul (ABC1D23). A consulta preenche marca,
+                  modelo, ano, cor e combustível. A placa fica só no painel; o cliente na vitrine não vê.
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="brand">Marca</Label>
@@ -216,9 +314,53 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="price">Preço (R$)</Label>
+                  <Label htmlFor="originalPrice">Preço de (R$)</Label>
+                  <Input
+                    id="originalPrice"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    placeholder="Ex: 99900"
+                    {...register("originalPrice")}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Opcional. Valor riscado na vitrine (deve ser maior que o preço atual).
+                  </p>
+                  {errors.originalPrice && (
+                    <p className="text-xs text-destructive">{errors.originalPrice.message}</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="price">Preço por (R$)</Label>
                   <Input id="price" type="number" inputMode="decimal" step="0.01" {...register("price")} />
                   {errors.price && <p className="text-xs text-destructive">{errors.price.message}</p>}
+                  {watch("originalPrice") != null &&
+                    Number(watch("originalPrice")) > Number(watch("price")) &&
+                    Number(watch("price")) > 0 && (
+                      <p className="text-xs font-semibold text-[#e81123]">
+                        Desconto de{" "}
+                        {Math.round(
+                          ((Number(watch("originalPrice")) - Number(watch("price"))) /
+                            Number(watch("originalPrice"))) *
+                            100
+                        )}
+                        % na vitrine
+                      </p>
+                    )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="purchasePrice">Valor de compra (R$)</Label>
+                  <Input
+                    id="purchasePrice"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    placeholder="O que você pagou"
+                    {...register("purchasePrice")}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Opcional. Custo interno da loja; não aparece na vitrine.
+                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="mileage">Quilometragem</Label>
@@ -229,17 +371,6 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
                   <Input id="doors" type="number" inputMode="numeric" {...register("doors")} />
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="plate">Placa</Label>
-                  <MaskedInput
-                    id="plate"
-                    placeholder="ABC-1D23"
-                    value={watch("plate") ?? ""}
-                    mask={maskPlate}
-                    onValueChange={(v) => setValue("plate", v, { shouldValidate: true })}
-                  />
-                  {errors.plate && <p className="text-xs text-destructive">{errors.plate.message}</p>}
-                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="renavam">Renavam</Label>
                   <MaskedInput
@@ -267,6 +398,65 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
                     </SelectContent>
                   </Select>
                 </div>
+
+                {watch("status") === "SOLD" && (
+                  <div className="space-y-3 rounded-lg border border-border bg-secondary/30 p-3 sm:col-span-2 lg:col-span-3 sm:p-4">
+                    <div>
+                      <Label htmlFor="soldPrice">Valor da venda (R$)</Label>
+                      <Input
+                        id="soldPrice"
+                        type="number"
+                        inputMode="decimal"
+                        step="0.01"
+                        className="mt-1.5 max-w-xs"
+                        placeholder="Por quanto vendeu"
+                        {...register("soldPrice")}
+                      />
+                      <p className="mt-1.5 text-[11px] text-muted-foreground">
+                        Opcional. Se preencher junto com o valor de compra, calculamos o lucro (venda − compra) e o
+                        faturamento da loja.
+                      </p>
+                    </div>
+                    {(() => {
+                      const purchase = Number(watch("purchasePrice") ?? 0);
+                      const sold = Number(watch("soldPrice") ?? 0);
+                      const hasPurchase = purchase > 0;
+                      const hasSold = sold > 0;
+                      if (!hasSold && !hasPurchase) return null;
+                      const profit = hasSold && hasPurchase ? sold - purchase : null;
+                      return (
+                        <div className="grid gap-2 sm:grid-cols-3">
+                          <div className="rounded-md border border-border bg-background px-3 py-2">
+                            <p className="text-[11px] text-muted-foreground">Compra</p>
+                            <p className="text-sm font-semibold">
+                              {hasPurchase ? formatCurrency(purchase) : "—"}
+                            </p>
+                          </div>
+                          <div className="rounded-md border border-border bg-background px-3 py-2">
+                            <p className="text-[11px] text-muted-foreground">Faturamento (venda)</p>
+                            <p className="text-sm font-semibold">
+                              {hasSold ? formatCurrency(sold) : "—"}
+                            </p>
+                          </div>
+                          <div className="rounded-md border border-border bg-background px-3 py-2">
+                            <p className="text-[11px] text-muted-foreground">Lucro</p>
+                            <p
+                              className={`text-sm font-semibold ${
+                                profit == null
+                                  ? ""
+                                  : profit >= 0
+                                    ? "text-emerald-600"
+                                    : "text-destructive"
+                              }`}
+                            >
+                              {profit == null ? "Informe compra e venda" : formatCurrency(profit)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <Label>Combustível</Label>
@@ -361,7 +551,10 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
           </TabsContent>
 
           <TabsContent value="fotos" className="space-y-4">
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+            <p className="text-sm text-muted-foreground">
+              Até {MAX_VEHICLE_IMAGES} fotos por veículo ({imageCount}/{MAX_VEHICLE_IMAGES}).
+            </p>
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
               {currentVehicle?.images.map((image) => (
                 <div key={image.id} className="group relative aspect-square overflow-hidden rounded-lg border border-border">
                   <img src={resolveImageUrl(image.url)} alt="Foto do veículo" className="h-full w-full object-cover" />
@@ -376,15 +569,17 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
                 </div>
               ))}
 
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadMutation.isPending}
-                className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-              >
-                {uploadMutation.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
-                <span className="text-xs font-medium">Adicionar</span>
-              </button>
+              {canAddPhotos && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadMutation.isPending}
+                  className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                >
+                  {uploadMutation.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
+                  <span className="text-xs font-medium">Adicionar</span>
+                </button>
+              )}
             </div>
 
             <input
@@ -394,15 +589,19 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
               multiple
               className="hidden"
               onChange={(e) => {
-                const files = Array.from(e.target.files ?? []);
+                const remaining = MAX_VEHICLE_IMAGES - imageCount;
+                const files = Array.from(e.target.files ?? []).slice(0, remaining);
                 if (files.length > 0) uploadMutation.mutate(files);
+                if ((e.target.files?.length ?? 0) > remaining) {
+                  toast.error(`Máximo de ${MAX_VEHICLE_IMAGES} fotos. Enviando apenas ${remaining}.`);
+                }
                 e.target.value = "";
               }}
             />
 
             {(!currentVehicle?.images || currentVehicle.images.length === 0) && (
               <p className="flex items-center gap-2 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-                <Upload className="h-4 w-4" /> Nenhuma imagem cadastrada. Clique em "Adicionar" para enviar fotos.
+                <Upload className="h-4 w-4" /> Nenhuma imagem cadastrada. Clique em &quot;Adicionar&quot; para enviar fotos.
               </p>
             )}
 

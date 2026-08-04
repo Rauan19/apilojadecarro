@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -101,13 +101,14 @@ model Company {
   city      String?
   state     String?
   zipCode   String?
-  logo      String?
-  website   String?
-  planId    String?
-  status    CompanyStatus @default(ACTIVE)
-  settings  String? // JSON string for SQLite compatibility
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  logo         String?
+  website      String?
+  customDomain String?       @unique
+  planId       String?
+  status       CompanyStatus @default(ACTIVE)
+  settings     String? // JSON string for SQLite compatibility
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   plan       SubscriptionPlan? @relation(fields: [planId], references: [id])
   users      User[]
@@ -206,6 +207,9 @@ model Vehicle {
   year         Int
   yearModel    Int
   price        Float
+  originalPrice Float?       // preço "de" (riscado); se > price, mostra % de desconto
+  purchasePrice Float?       // valor pago na compra do veículo (custo interno)
+  soldPrice     Float?       // valor efetivo da venda (quando status = SOLD)
   mileage      Int           @default(0)
   plate        String?
   renavam      String?

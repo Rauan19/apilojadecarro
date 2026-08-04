@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: lojadecarro-postgres
+    restart: unless-stopped
+    ports:
+      - "65432:5432"
+    environment:
+      POSTGRES_USER: lojadecarro
+      POSTGRES_PASSWORD: lojadecarro
+      POSTGRES_DB: lojadecarro
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lojadecarro -d lojadecarro"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:

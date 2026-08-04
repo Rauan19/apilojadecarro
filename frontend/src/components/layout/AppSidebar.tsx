@@ -29,7 +29,7 @@ interface NavItem {
 
 const navByRole: Record<Role, NavItem[]> = {
   SUPER_ADMIN: [
-    { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
+    { label: "Início", to: "/dashboard", icon: LayoutDashboard },
     { label: "Clientes", to: "/empresas", icon: Building2 },
     { label: "Planos", to: "/planos", icon: Tags },
     { label: "Usuários", to: "/usuarios", icon: Users },
@@ -38,7 +38,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Docs API", to: "/documentacao", icon: Code2 },
   ],
   STORE_ADMIN: [
-    { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
+    { label: "Início", to: "/dashboard", icon: LayoutDashboard },
     { label: "Veículos", to: "/veiculos", icon: Car },
     { label: "Clientes", to: "/clientes", icon: Users2 },
     { label: "Leads", to: "/leads", icon: Target },
@@ -48,7 +48,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Configurações", to: "/configuracoes", icon: Settings },
   ],
   SELLER: [
-    { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
+    { label: "Início", to: "/dashboard", icon: LayoutDashboard },
     { label: "Veículos", to: "/veiculos", icon: Car },
     { label: "Clientes", to: "/clientes", icon: Users2 },
     { label: "Leads", to: "/leads", icon: Target },
@@ -64,7 +64,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex h-16 items-center border-b border-sidebar-border px-5">
-        <BrandLogo subtitle="Painel de Gestão" />
+        <BrandLogo preferStoreBrand subtitle="Painel de Gestão" />
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3 sm:px-3 sm:py-4">
@@ -77,8 +77,8 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
               cn(
                 "group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-none"
-                  : "text-sidebar-foreground/70 hover:bg-muted hover:text-sidebar-foreground"
+                  ? "bg-primary/10 text-primary shadow-none"
+                  : "text-sidebar-foreground/70 hover:bg-secondary hover:text-sidebar-foreground"
               )
             }
           >
@@ -88,7 +88,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                   className={cn(
                     "h-[18px] w-[18px] shrink-0 transition-colors",
                     isActive
-                      ? "text-sidebar-primary"
+                      ? "text-primary"
                       : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground"
                   )}
                 />

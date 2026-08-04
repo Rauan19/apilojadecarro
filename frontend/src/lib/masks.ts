@@ -48,11 +48,56 @@ export function maskState(value: string): string {
   return value.replace(/[^a-zA-Z]/g, "").slice(0, 2).toUpperCase();
 }
 
-/** Placa Mercosul (ABC1D23) ou antiga (ABC1234) */
+/** Remove hífen/espaços e deixa a placa em maiúsculo (7 chars). */
+export function normalizePlate(value: string): string {
+  return value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 7);
+}
+
+/** Placa cinza antiga: ABC1234 (3 letras + 4 números) */
+export function isOldPlate(value: string): boolean {
+  return /^[A-Z]{3}\d{4}$/.test(normalizePlate(value));
+}
+
+/** Placa Mercosul: ABC1D23 (3 letras + número + letra + 2 números) */
+export function isMercosulPlate(value: string): boolean {
+  return /^[A-Z]{3}\d[A-Z]\d{2}$/.test(normalizePlate(value));
+}
+
+/**
+ * Máscara de digitação: aceita antiga (ABC-1234) e Mercosul (ABC-1D23).
+ * Na 5ª posição (após as 3 letras + 1º dígito) permite letra ou número.
+ */
 export function maskPlate(value: string): string {
-  const raw = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 7);
+  const raw = normalizePlate(value);
   if (raw.length <= 3) return raw;
   return `${raw.slice(0, 3)}-${raw.slice(3)}`;
+}
+
+/** Formata para exibição: antiga ABC-1234 | Mercosul ABC1D23 */
+export function formatPlate(value: string): string {
+  const raw = normalizePlate(value);
+  if (isOldPlate(raw)) return `${raw.slice(0, 3)}-${raw.slice(3)}`;
+  if (isMercosulPlate(raw)) return raw;
+  if (raw.length > 3) return `${raw.slice(0, 3)}-${raw.slice(3)}`;
+  return raw;
+}
+
+/** Tabela Denatran: 2º dígito da placa antiga ↔ letra Mercosul */
+const PLATE_DIGIT_TO_LETTER = "ABCDEFGHIJ";
+
+export function oldPlateToMercosul(value: string): string | null {
+  const raw = normalizePlate(value);
+  if (!isOldPlate(raw)) return null;
+  const letter = PLATE_DIGIT_TO_LETTER[Number(raw[4])];
+  return `${raw.slice(0, 4)}${letter}${raw.slice(5)}`;
+}
+
+export function mercosulPlateToOld(value: string): string | null {
+  const raw = normalizePlate(value);
+  if (!isMercosulPlate(raw)) return null;
+  const idx = PLATE_DIGIT_TO_LETTER.indexOf(raw[4]);
+  if (idx < 0) return null; // letra fora de A–J: placa Mercosul “nova”, sem equivalente antigo
+  return `${raw.slice(0, 4)}${idx}${raw.slice(5)}`;
 }
 
 export function maskRenavam(value: string): string {
@@ -128,9 +173,9 @@ export function isValidState(value: string): boolean {
   return /^[A-Z]{2}$/.test(value.trim().toUpperCase());
 }
 
+/** Aceita placa cinza antiga (ABC-1234) ou Mercosul (ABC1D23). */
 export function isValidPlate(value: string): boolean {
-  const raw = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-  return /^[A-Z]{3}\d{4}$/.test(raw) || /^[A-Z]{3}\d[A-Z]\d{2}$/.test(raw);
+  return isOldPlate(value) || isMercosulPlate(value);
 }
 
 export function isValidWebsite(value: string): boolean {

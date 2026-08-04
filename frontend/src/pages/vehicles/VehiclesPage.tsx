@@ -98,7 +98,37 @@ export function VehiclesPage() {
     {
       key: "price",
       header: "Preço",
-      cell: (row) => <span className="font-medium">{formatCurrency(row.price)}</span>,
+      cell: (row) => {
+        const profit =
+          row.status === "SOLD" &&
+          row.soldPrice != null &&
+          row.purchasePrice != null
+            ? row.soldPrice - row.purchasePrice
+            : null;
+        return (
+          <div>
+            {row.originalPrice != null && row.originalPrice > row.price ? (
+              <p className="text-xs text-muted-foreground line-through">{formatCurrency(row.originalPrice)}</p>
+            ) : null}
+            <span className="font-medium">{formatCurrency(row.price)}</span>
+            {row.originalPrice != null && row.originalPrice > row.price ? (
+              <span className="ml-1.5 text-xs font-bold text-[#e81123]">
+                -{Math.round(((row.originalPrice - row.price) / row.originalPrice) * 100)}%
+              </span>
+            ) : null}
+            {row.status === "SOLD" && row.soldPrice != null && row.soldPrice > 0 ? (
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Vendido por {formatCurrency(row.soldPrice)}
+              </p>
+            ) : null}
+            {profit != null ? (
+              <p className={`text-xs font-semibold ${profit >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                Lucro {formatCurrency(profit)}
+              </p>
+            ) : null}
+          </div>
+        );
+      },
     },
     {
       key: "status",

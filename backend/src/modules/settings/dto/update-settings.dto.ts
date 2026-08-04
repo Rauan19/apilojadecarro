@@ -54,9 +54,17 @@ export class UpdateSettingsDto {
   website?: string;
 
   @ApiPropertyOptional({
+    example: 'www.minhaloja.com.br',
+    description: 'Domínio próprio opcional da vitrine (sem http/https)',
+  })
+  @IsOptional()
+  @IsString()
+  customDomain?: string | null;
+
+  @ApiPropertyOptional({
     description: 'Configurações do site em JSON string',
     example:
-      '{"theme":"dark","about":"Sobre nós","whatsapp":"5511999999999","social":{"instagram":"@loja"}}',
+      '{"theme":{"primaryColor":"#e10600"},"about":"Sobre nós","whatsapp":"5511999999999","social":{"instagram":"@loja"}}',
   })
   @IsOptional()
   @IsString()

@@ -79,7 +79,7 @@ export function ResetPasswordPage() {
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1">
-              <h1 className="font-display text-2xl font-semibold uppercase tracking-[0.04em]">
+              <h1 className="font-display text-2xl font-bold tracking-tight">
                 Nova senha
               </h1>
               <p className="text-sm text-muted-foreground">

@@ -36,7 +36,7 @@ export class ApiTokensController {
     const data = await this.apiTokensService.create(dto);
     return {
       message:
-        'Token de API criado com sucesso. Guarde o token — ele não será exibido novamente.',
+        'Token de API criado com sucesso. Guarde o token; ele não será exibido novamente.',
       data,
     };
   }

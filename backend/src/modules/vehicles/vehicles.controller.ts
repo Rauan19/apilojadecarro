@@ -62,6 +62,14 @@ export class VehiclesController {
     return { message: 'Veículos listados com sucesso', data };
   }
 
+  @Get('lookup-plate/:plate')
+  @Roles(Role.SUPER_ADMIN, Role.STORE_ADMIN, Role.SELLER)
+  @ApiOperation({ summary: 'Consultar dados do veículo pela placa' })
+  async lookupPlate(@Param('plate') plate: string) {
+    const data = await this.vehiclesService.lookupPlate(plate);
+    return { message: 'Consulta realizada com sucesso', data };
+  }
+
   @Get(':id')
   @Roles(Role.SUPER_ADMIN, Role.STORE_ADMIN, Role.SELLER)
   @ApiOperation({ summary: 'Buscar veículo por ID' })
@@ -116,7 +124,7 @@ export class VehiclesController {
     },
   })
   @UseInterceptors(
-    FilesInterceptor('files', 20, {
+    FilesInterceptor('files', 5, {
       storage: memoryStorage(),
       limits: { fileSize: 5 * 1024 * 1024 },
     }),

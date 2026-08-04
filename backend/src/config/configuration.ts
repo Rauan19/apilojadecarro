@@ -13,4 +13,7 @@ export default () => ({
   MAX_FILE_SIZE: parseInt(process.env.MAX_FILE_SIZE ?? '5242880', 10),
   THROTTLE_TTL: parseInt(process.env.THROTTLE_TTL ?? '60', 10),
   THROTTLE_LIMIT: parseInt(process.env.THROTTLE_LIMIT ?? '100', 10),
+  /** Token Invertexto para consulta real por placa (opcional em dev). */
+  PLATE_API_TOKEN: process.env.PLATE_API_TOKEN ?? '',
+  PLATE_LOOKUP_DEMO: process.env.PLATE_LOOKUP_DEMO ?? 'true',
 });

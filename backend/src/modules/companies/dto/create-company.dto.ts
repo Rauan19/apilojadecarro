@@ -64,6 +64,14 @@ export class CreateCompanyDto {
   @IsString()
   website?: string;
 
+  @ApiPropertyOptional({
+    example: 'www.minhaloja.com.br',
+    description: 'Domínio próprio opcional da vitrine (sem protocolo)',
+  })
+  @IsOptional()
+  @IsString()
+  customDomain?: string;
+
   @ApiPropertyOptional({ format: 'uuid', description: 'Plano do cliente' })
   @IsOptional()
   @IsUUID()

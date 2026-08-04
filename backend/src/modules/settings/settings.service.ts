@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -12,6 +13,7 @@ import { UpdateSettingsDto } from './dto/update-settings.dto';
 export interface CompanySettingsResponse {
   id: string;
   name: string;
+  slug: string;
   phone: string | null;
   email: string;
   address: string | null;
@@ -20,6 +22,7 @@ export interface CompanySettingsResponse {
   zipCode: string | null;
   logo: string | null;
   website: string | null;
+  customDomain: string | null;
   settings: Record<string, unknown> | null;
 }
 
@@ -42,14 +45,33 @@ export class SettingsService {
     companyIdParam?: string,
   ): Promise<CompanySettingsResponse> {
     const companyId = this.resolveCompanyId(user, companyIdParam);
+    const existing = await this.findCompany(companyId);
+
+    const data: Record<string, unknown> = { ...dto };
+
+    if (dto.customDomain !== undefined) {
+      data.customDomain = this.normalizeDomain(dto.customDomain);
+      if (data.customDomain) {
+        const taken = await this.prisma.company.findFirst({
+          where: {
+            customDomain: data.customDomain as string,
+            NOT: { id: companyId },
+          },
+        });
+        if (taken) {
+          throw new ConflictException('Este domínio já está em uso por outra loja');
+        }
+      }
+    }
 
     if (dto.settings) {
       this.assertValidJson(dto.settings);
+      data.settings = this.mergeSettingsJson(existing.settings, dto.settings);
     }
 
     const company = await this.prisma.company.update({
       where: { id: companyId },
-      data: dto,
+      data,
     });
 
     return this.toSettingsResponse(company);
@@ -96,6 +118,7 @@ export class SettingsService {
     return {
       id: company.id,
       name: company.name,
+      slug: company.slug,
       phone: company.phone,
       email: company.email,
       address: company.address,
@@ -104,6 +127,7 @@ export class SettingsService {
       zipCode: company.zipCode,
       logo: company.logo,
       website: company.website,
+      customDomain: company.customDomain,
       settings: this.parseSettings(company.settings),
     };
   }
@@ -120,6 +144,59 @@ export class SettingsService {
     } catch {
       return null;
     }
+  }
+
+  private mergeSettingsJson(
+    currentRaw: string | null,
+    incomingRaw: string,
+  ): string {
+    const current = this.parseSettings(currentRaw) ?? {};
+    const incoming = JSON.parse(incomingRaw) as Record<string, unknown>;
+
+    const currentTheme =
+      typeof current.theme === 'object' && current.theme !== null
+        ? (current.theme as Record<string, unknown>)
+        : {};
+    const incomingTheme =
+      typeof incoming.theme === 'object' && incoming.theme !== null
+        ? (incoming.theme as Record<string, unknown>)
+        : {};
+
+    const currentSocial =
+      typeof current.social === 'object' && current.social !== null
+        ? (current.social as Record<string, unknown>)
+        : {};
+    const incomingSocial =
+      typeof incoming.social === 'object' && incoming.social !== null
+        ? (incoming.social as Record<string, unknown>)
+        : {};
+
+    return JSON.stringify({
+      ...current,
+      ...incoming,
+      theme: { ...currentTheme, ...incomingTheme },
+      social: { ...currentSocial, ...incomingSocial },
+      banners: Array.isArray(incoming.banners)
+        ? incoming.banners
+        : Array.isArray(current.banners)
+          ? current.banners
+          : [],
+    });
+  }
+
+  private normalizeDomain(value: string | null | undefined): string | null {
+    if (value == null) {
+      return null;
+    }
+    const trimmed = value.trim().toLowerCase();
+    if (!trimmed) {
+      return null;
+    }
+    return trimmed
+      .replace(/^https?:\/\//, '')
+      .replace(/\/.*$/, '')
+      .replace(/:\d+$/, '')
+      .replace(/^www\./, '');
   }
 
   private assertValidJson(value: string): void {

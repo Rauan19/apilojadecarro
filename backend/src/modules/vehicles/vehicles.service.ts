@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { VehicleImage } from '@prisma/client';
 import {
   buildPaginatedResult,
@@ -12,9 +16,15 @@ import { UploadsService } from '../uploads/uploads.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 import {
+  PlateLookupResult,
+  PlateLookupService,
+} from './plate-lookup.service';
+import {
   VehicleWithImages,
   VehiclesRepository,
 } from './vehicles.repository';
+
+export const MAX_VEHICLE_IMAGES = 5;
 
 @Injectable()
 export class VehiclesService {
@@ -22,7 +32,12 @@ export class VehiclesService {
     private readonly vehiclesRepository: VehiclesRepository,
     private readonly uploadsService: UploadsService,
     private readonly uploadProvider: LocalUploadProvider,
+    private readonly plateLookupService: PlateLookupService,
   ) {}
+
+  async lookupPlate(plate: string): Promise<PlateLookupResult> {
+    return this.plateLookupService.lookup(plate);
+  }
 
   async create(
     dto: CreateVehicleDto,
@@ -38,6 +53,9 @@ export class VehiclesService {
       year: dto.year,
       yearModel: dto.yearModel,
       price: dto.price,
+      originalPrice: dto.originalPrice ?? null,
+      purchasePrice: dto.purchasePrice ?? null,
+      soldPrice: dto.soldPrice ?? null,
       mileage: dto.mileage,
       plate: dto.plate,
       renavam: dto.renavam,
@@ -133,8 +151,26 @@ export class VehiclesService {
     await this.findOne(id, actor, queryCompanyId);
     const companyId = resolveTenantCompanyId(actor, queryCompanyId);
 
-    const uploads = await this.uploadsService.uploadMany(files, companyId);
+    if (!files?.length) {
+      throw new BadRequestException('Nenhuma imagem enviada');
+    }
+
     const currentCount = await this.vehiclesRepository.countImages(id);
+    const remaining = MAX_VEHICLE_IMAGES - currentCount;
+
+    if (remaining <= 0) {
+      throw new BadRequestException(
+        `Máximo de ${MAX_VEHICLE_IMAGES} fotos por veículo`,
+      );
+    }
+
+    if (files.length > remaining) {
+      throw new BadRequestException(
+        `Você pode adicionar no máximo mais ${remaining} foto(s). Limite: ${MAX_VEHICLE_IMAGES}.`,
+      );
+    }
+
+    const uploads = await this.uploadsService.uploadMany(files, companyId);
 
     return this.vehiclesRepository.createImages(
       id,
