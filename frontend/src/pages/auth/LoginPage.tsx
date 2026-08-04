@@ -28,7 +28,6 @@ export function LoginPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    setValue,
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
@@ -47,11 +46,6 @@ export function LoginPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível autenticar");
     }
-  };
-
-  const fillDemo = () => {
-    setValue("email", "admin@sistema.com");
-    setValue("password", "123456");
   };
 
   return (
@@ -123,14 +117,6 @@ export function LoginPage() {
             <Button type="submit" className="w-full" loading={isSubmitting}>
               Acessar painel
             </Button>
-
-            <button
-              type="button"
-              onClick={fillDemo}
-              className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
-            >
-              Preencher demo (admin)
-            </button>
           </form>
         </div>
       </div>

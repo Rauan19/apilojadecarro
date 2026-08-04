@@ -129,7 +129,10 @@ export class AuthService {
 
     const frontendUrl = (
       this.configService.get<string>('FRONTEND_URL') ?? 'http://localhost:5173'
-    ).replace(/\/$/, '');
+    )
+      .split(',')[0]
+      .trim()
+      .replace(/\/$/, '');
 
     return {
       url: `${frontendUrl}/redefinir-senha?token=${token}`,
