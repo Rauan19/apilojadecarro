@@ -1,11 +1,12 @@
 # PRODUCT.md
 
 ## Product
-LojaDeCarro — SaaS multi-tenant para gestão de lojas de veículos + vitrine pública `/loja`.
+EstoqueAuto — SaaS multi-tenant para gestão de lojas de veículos + vitrine pública `/loja`.
+Domínio: estoqueauto.com
 
 ## Surfaces
 - **Painel** (`/login`, `/dashboard`, CRUDs): operação da loja e Super Admin
 - **Loja pública** (`/loja`): vitrine de estoque no estilo marketplace
 
 ## Design
-Identidade visual global inspirada na **Webmotors** (vermelho, fundo cinza, cards de anúncio, CTAs fortes).
+Identidade própria EstoqueAuto: vermelho `#E31C23`, charcoal `#12141A`, tipografia Archivo + Source Sans 3.

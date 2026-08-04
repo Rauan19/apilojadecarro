@@ -134,23 +134,74 @@ export function ApiDocsPage() {
   const baseUrl = API_URL;
   const tokenPlaceholder = "SEU_TOKEN_DE_API";
 
+  const vehicleExample = `{
+  "id": "uuid-do-veiculo",
+  "brand": "Toyota",
+  "model": "Corolla",
+  "version": "XEi 2.0 Flex Aut.",
+  "year": 2022,
+  "yearModel": 2023,
+  "price": 128900,
+  "originalPrice": 139900,
+  "mileage": 42000,
+  "fuel": "FLEX",
+  "transmission": "AUTOMATIC",
+  "color": "Prata",
+  "doors": 4,
+  "description": "Único dono, revisões em dia.",
+  "optionals": "[\\"Ar digital\\",\\"Multimídia\\",\\"Câmera de ré\\"]",
+  "status": "AVAILABLE",
+  "createdAt": "2026-07-01T12:00:00.000Z",
+  "updatedAt": "2026-07-10T15:30:00.000Z",
+  "images": [
+    {
+      "id": "uuid-da-imagem",
+      "url": "/uploads/empresa-.../foto.jpg",
+      "order": 0
+    }
+  ]
+}`;
+
+  const vehicleListParams = [
+    { name: "page", type: "number", description: "Página atual (padrão: 1)" },
+    { name: "limit", type: "number", description: "Itens por página (padrão: 10, máx: 100)" },
+    { name: "search", type: "string", description: "Busca livre por marca, modelo ou descrição" },
+    { name: "brand", type: "string", description: "Filtra por marca" },
+    { name: "model", type: "string", description: "Filtra por modelo" },
+    { name: "year", type: "number", description: "Filtra por ano de fabricação" },
+    { name: "minPrice", type: "number", description: "Preço mínimo" },
+    { name: "maxPrice", type: "number", description: "Preço máximo" },
+    { name: "color", type: "string", description: "Filtra por cor" },
+    { name: "transmission", type: "string", description: "MANUAL | AUTOMATIC | CVT | DCT" },
+    {
+      name: "fuel",
+      type: "string",
+      description: "FLEX | GASOLINE | ETHANOL | DIESEL | ELECTRIC | HYBRID | GNV",
+    },
+    { name: "sortBy", type: "string", description: "Campo de ordenação (padrão: createdAt)" },
+    { name: "sortOrder", type: "string", description: "asc | desc (padrão: desc)" },
+  ];
+
   const endpoints: EndpointDoc[] = [
     {
       method: "GET",
       path: "/public/company",
       title: "Informações da empresa",
-      description: "Retorna os dados públicos da empresa associada ao token (nome, logo, contato e configurações da vitrine).",
+      description:
+        "Retorna os dados públicos da loja associada ao token (nome, logo, contato e configurações da vitrine).",
       curl: `curl -X GET "${baseUrl}/public/company" \\\n  -H "Authorization: Bearer ${tokenPlaceholder}"`,
       response: `{
   "success": true,
   "message": "Empresa obtida com sucesso",
   "data": {
     "name": "AutoPrime Veículos",
-    "logo": null,
+    "slug": "autoprme",
+    "logo": "/uploads/empresa-.../logo.png",
     "phone": "(11) 3456-7890",
     "email": "contato@autoprme.com.br",
     "city": "São Paulo",
-    "settings": { "whatsapp": "5511999998888" }
+    "customDomain": null,
+    "settings": { "whatsapp": "5511999998888", "about": "..." }
   }
 }`,
     },
@@ -158,36 +209,28 @@ export function ApiDocsPage() {
       method: "GET",
       path: "/public/vehicles",
       title: "Listar veículos disponíveis",
-      description: "Retorna a lista paginada de veículos com status AVAILABLE, com filtros opcionais.",
-      params: [
-        { name: "page", type: "number", description: "Página atual (padrão: 1)" },
-        { name: "limit", type: "number", description: "Itens por página (padrão: 10, máx: 100)" },
-        { name: "brand", type: "string", description: "Filtra por marca" },
-        { name: "model", type: "string", description: "Filtra por modelo" },
-        { name: "year", type: "number", description: "Filtra por ano de fabricação" },
-        { name: "minPrice", type: "number", description: "Preço mínimo" },
-        { name: "maxPrice", type: "number", description: "Preço máximo" },
-        { name: "transmission", type: "string", description: "MANUAL | AUTOMATIC | CVT | DCT" },
-        { name: "fuel", type: "string", description: "FLEX | GASOLINE | ETHANOL | DIESEL | ELECTRIC | HYBRID | GNV" },
-        { name: "search", type: "string", description: "Busca livre por marca, modelo ou descrição" },
-      ],
-      curl: `curl -X GET "${baseUrl}/public/vehicles?page=1&limit=10" \\\n  -H "Authorization: Bearer ${tokenPlaceholder}"`,
+      description:
+        "Lista paginada de veículos AVAILABLE da loja do token. Ideal para bots e sites externos.",
+      params: vehicleListParams,
+      curl: `curl -X GET "${baseUrl}/public/vehicles?page=1&limit=10&search=corolla" \\\n  -H "Authorization: Bearer ${tokenPlaceholder}"`,
       response: `{
   "success": true,
   "message": "Veículos listados com sucesso",
   "data": {
     "items": [
-      {
-        "id": "uuid",
-        "brand": "Toyota",
-        "model": "Corolla",
-        "year": 2022,
-        "price": 128900,
-        "status": "AVAILABLE",
-        "images": []
-      }
+${vehicleExample
+  .split("\n")
+  .map((line) => `      ${line}`)
+  .join("\n")}
     ],
-    "meta": { "total": 5, "page": 1, "limit": 10, "totalPages": 1, "hasNextPage": false, "hasPrevPage": false }
+    "meta": {
+      "total": 5,
+      "page": 1,
+      "limit": 10,
+      "totalPages": 1,
+      "hasNextPage": false,
+      "hasPrevPage": false
+    }
   }
 }`,
     },
@@ -195,31 +238,38 @@ export function ApiDocsPage() {
       method: "GET",
       path: "/public/vehicles/:id",
       title: "Detalhes de um veículo",
-      description: "Retorna os dados completos de um veículo disponível a partir do ID.",
+      description:
+        "Retorna um veículo específico da loja pelo ID (somente se estiver AVAILABLE). Use o id da listagem.",
+      params: [{ name: "id", type: "uuid (path)", description: "ID do veículo na URL" }],
       curl: `curl -X GET "${baseUrl}/public/vehicles/{id}" \\\n  -H "Authorization: Bearer ${tokenPlaceholder}"`,
       response: `{
   "success": true,
   "message": "Veículo encontrado",
-  "data": { "id": "uuid", "brand": "Toyota", "model": "Corolla", "images": [] }
+  "data": ${vehicleExample}
 }`,
     },
     {
       method: "GET",
       path: "/public/search",
       title: "Buscar veículos (alias)",
-      description: "Alias de /public/vehicles, útil para campos de busca no site.",
-      curl: `curl -X GET "${baseUrl}/public/search?search=corolla" \\\n  -H "Authorization: Bearer ${tokenPlaceholder}"`,
+      description:
+        "Mesmo comportamento de /public/vehicles. Útil para campos de busca (ex.: ?search=corolla).",
+      params: vehicleListParams,
+      curl: `curl -X GET "${baseUrl}/public/search?search=corolla&page=1&limit=10" \\\n  -H "Authorization: Bearer ${tokenPlaceholder}"`,
       response: `{
   "success": true,
   "message": "Busca realizada com sucesso",
-  "data": { "items": [], "meta": { "total": 0 } }
+  "data": {
+    "items": [ /* mesmos campos do veículo na listagem */ ],
+    "meta": { "total": 1, "page": 1, "limit": 10, "totalPages": 1, "hasNextPage": false, "hasPrevPage": false }
+  }
 }`,
     },
     {
       method: "POST",
       path: "/public/leads",
       title: "Criar lead via site",
-      description: "Registra um novo lead originado do site institucional da loja.",
+      description: "Registra um novo lead originado do site ou bot da loja.",
       body: [
         { name: "name", type: "string", required: true, description: "Nome do interessado" },
         { name: "phone", type: "string", description: "Telefone de contato" },
@@ -258,7 +308,10 @@ export function ApiDocsPage() {
 
   return (
     <div>
-      <PageHeader title="Documentação da API" description="Referência completa da API pública para integrações externas" />
+      <PageHeader
+        title="Documentação da API"
+        description="Referência da API pública para sites, bots e integrações de cada loja"
+      />
 
       <Card className="mb-6 overflow-hidden border-none bg-sidebar text-sidebar-foreground">
         <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
@@ -267,7 +320,7 @@ export function ApiDocsPage() {
               <Server className="h-6 w-6" />
             </div>
             <div>
-              <p className="font-display text-lg font-semibold">API REST LojaDeCarro</p>
+              <p className="font-display text-lg font-semibold">API REST EstoqueAuto</p>
               <p className="text-sm text-sidebar-foreground/60">Base URL para todas as requisições</p>
             </div>
           </div>
@@ -292,36 +345,60 @@ export function ApiDocsPage() {
         <TabsContent value="auth" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Como autenticar</CardTitle>
+              <CardTitle>Como autenticar (API pública)</CardTitle>
               <CardDescription>
-                A API pública utiliza um Token de API vinculado ao cliente (loja). Gere um token na página{" "}
-                <span className="font-medium text-foreground">Tokens API</span> e inclua-o em todas as requisições no
-                cabeçalho <code className="rounded bg-muted px-1 py-0.5">Authorization</code>.
+                O <span className="font-medium text-foreground">Bearer token</span> das rotas{" "}
+                <code className="rounded bg-muted px-1 py-0.5">/public/*</code> é o{" "}
+                <span className="font-medium text-foreground">token da loja</span> gerado pelo Super Admin em{" "}
+                <span className="font-medium text-foreground">Tokens API</span>. Cada token fica vinculado a uma loja e
+                identifica o estoque dela automaticamente.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
+                <p className="font-semibold text-foreground">Passo a passo</p>
+                <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-muted-foreground">
+                  <li>
+                    No painel admin SaaS, abra <strong className="text-foreground">Tokens API</strong>.
+                  </li>
+                  <li>Selecione a loja (cliente) e gere um novo token.</li>
+                  <li>Copie o token (exibido só na criação) e use no header abaixo.</li>
+                  <li>
+                    Ideal para bots e sites: o token <strong className="text-foreground">não expira</strong>. Só deixa
+                    de funcionar se for revogado/apagado ou se a loja for bloqueada.
+                  </li>
+                </ol>
+              </div>
+
               <CodeBlock code={`Authorization: Bearer ${tokenPlaceholder}`} language="header" />
+
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-lg border border-border p-4">
-                  <p className="text-sm font-semibold">Usuários do painel (JWT)</p>
+                  <p className="text-sm font-semibold">Token da loja (API pública)</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Endpoints internos do painel (clientes SaaS, veículos, leads etc.) usam JWT obtido via{" "}
-                    <code className="rounded bg-muted px-1 py-0.5 text-xs">POST /auth/login</code>. Tokens expiram em 15
-                    minutos e podem ser renovados via{" "}
-                    <code className="rounded bg-muted px-1 py-0.5 text-xs">POST /auth/refresh</code>.
+                    Gerado em <strong>Tokens API</strong>, 64 caracteres,{" "}
+                    <strong className="text-foreground">sem data de expiração</strong>, vinculado a uma loja. Use em
+                    todas as rotas{" "}
+                    <code className="rounded bg-muted px-1 py-0.5 text-xs">/public/*</code>. Pode ser revogado a
+                    qualquer momento no admin.
                   </p>
                 </div>
                 <div className="rounded-lg border border-border p-4">
-                  <p className="text-sm font-semibold">Integrações externas (Token de API)</p>
+                  <p className="text-sm font-semibold">JWT do painel (não use no bot)</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Endpoints em <code className="rounded bg-muted px-1 py-0.5 text-xs">/public/*</code> usam um token
-                    opaco de 64 caracteres, sem expiração, que identifica o cliente automaticamente.
+                    Login do dashboard via{" "}
+                    <code className="rounded bg-muted px-1 py-0.5 text-xs">POST /auth/login</code>: access ~15 min,
+                    refresh ~7 dias. Serve só para o painel interno —{" "}
+                    <strong className="text-foreground">não autentica a API pública</strong>.
                   </p>
                 </div>
               </div>
               <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
                 Todas as respostas seguem o formato:{" "}
                 <code className="rounded bg-muted px-1 py-0.5 text-xs">{`{ success, message, data, errors }`}</code>
+                . URLs de imagem vêm relativas (ex.:{" "}
+                <code className="rounded bg-muted px-1 py-0.5 text-xs">/uploads/...</code>) — monte com a origem da
+                API (sem o sufixo <code className="rounded bg-muted px-1 py-0.5 text-xs">/api</code>).
               </div>
             </CardContent>
           </Card>

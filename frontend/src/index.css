@@ -2,7 +2,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Tema global inspirado em marketplace Webmotors */
+/* Tema EstoqueAuto — marketplace automotivo */
 :root {
   --background: 220 14% 96%;
   --foreground: 220 20% 14%;

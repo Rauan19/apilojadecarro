@@ -87,21 +87,21 @@ export function PublicStoreLayout() {
   return (
     <div className="flex min-h-dvh flex-col overflow-x-clip bg-[#f3f3f3]" style={brandStyle}>
       <header className="safe-pt sticky top-0 z-40 border-b border-[#e6e6e6] bg-white shadow-[0_1px_0_rgb(0_0_0/0.04)]">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-3 sm:h-20 sm:gap-4 sm:px-6">
-          <Link to={home} className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-3 px-3 sm:h-24 sm:gap-4 sm:px-6">
+          <Link to={home} className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3.5">
             {company?.logo ? (
               <img
                 src={resolveMediaUrl(company.logo)}
                 alt={company.name}
-                className="h-12 w-auto max-w-[180px] object-contain sm:h-16 sm:max-w-[260px]"
+                className="h-16 w-auto max-w-[220px] object-contain sm:h-20 sm:max-w-[320px]"
               />
             ) : (
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground sm:h-16 sm:w-16 sm:text-base">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-primary text-base font-bold text-primary-foreground sm:h-20 sm:w-20 sm:text-lg">
                 {(company?.name ?? "L").slice(0, 2).toUpperCase()}
               </div>
             )}
             <div className="min-w-0 leading-tight">
-              <p className="truncate font-display text-sm font-bold tracking-tight text-foreground sm:text-base">
+              <p className="truncate font-display text-base font-bold tracking-tight text-foreground sm:text-lg">
                 {isLoading || waitingHost ? "Carregando..." : company?.name ?? "Loja de veículos"}
               </p>
               {locationLabel && (
@@ -286,7 +286,7 @@ export function PublicStoreLayout() {
         </div>
         <div className="border-t border-white/10">
           <p className="mx-auto max-w-7xl px-4 py-4 text-xs text-white/45 sm:px-6">
-            &copy; {new Date().getFullYear()} {company?.name ?? "LojaDeCarro"}. Todos os direitos reservados.
+            &copy; {new Date().getFullYear()} {company?.name ?? "EstoqueAuto"}. Todos os direitos reservados.
           </p>
         </div>
       </footer>

@@ -1,5 +1,6 @@
 import * as React from "react";
 import { StoreChevronLeftIcon, StoreChevronRightIcon } from "@/components/store/StoreIcons";
+import { resolveMediaUrl } from "@/utils/mediaUrl";
 import type { StoreBanner } from "@/utils/storeBanners";
 
 interface StoreBannerCarouselProps {
@@ -64,7 +65,7 @@ export function StoreBannerCarousel({
   const content = (
     <>
       <img
-        src={current.imageUrl}
+        src={resolveMediaUrl(current.imageUrl)}
         alt={current.title || "Banner da loja"}
         className="h-full w-full object-cover"
         draggable={false}

@@ -23,15 +23,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCompany } from "@/hooks/useCompany";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { fuelLabels, transmissionLabels, vehicleStatusLabels, vehicleStatusVariant } from "@/utils/labels";
+import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { VehicleFormDialog } from "./VehicleFormDialog";
 import type { Vehicle } from "@/types";
-import { API_URL } from "@/services/api";
-
-function resolveImageUrl(url: string) {
-  if (url.startsWith("http")) return url;
-  const origin = API_URL.replace(/\/api\/?$/, "");
-  return `${origin}/${url.replace(/^\//, "")}`;
-}
 
 export function VehiclesPage() {
   const { user } = useAuth();
@@ -69,7 +63,7 @@ export function VehiclesPage() {
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
             {row.images[0] ? (
-              <img src={resolveImageUrl(row.images[0].url)} alt={row.model} className="h-full w-full object-cover" />
+              <img src={resolveMediaUrl(row.images[0].url)} alt={row.model} className="h-full w-full object-cover" />
             ) : (
               <Car className="h-5 w-5 text-muted-foreground" />
             )}

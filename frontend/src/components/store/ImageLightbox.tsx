@@ -5,6 +5,7 @@ import {
   StoreChevronRightIcon,
   StoreCloseIcon,
 } from "@/components/store/StoreIcons";
+import { resolveMediaUrl } from "@/utils/mediaUrl";
 
 interface ImageLightboxProps {
   images: { id: string; url: string }[];
@@ -102,7 +103,7 @@ export function ImageLightbox({
         }}
       >
         <img
-          src={current.url}
+          src={resolveMediaUrl(current.url)}
           alt={alt ?? "Foto do veículo"}
           className="max-h-full max-w-full object-contain select-none"
           draggable={false}
@@ -144,7 +145,7 @@ export function ImageLightbox({
                 i === index ? "border-white" : "border-transparent opacity-55"
               }`}
             >
-              <img src={image.url} alt="" className="h-full w-full object-cover" />
+              <img src={resolveMediaUrl(image.url)} alt="" className="h-full w-full object-cover" />
             </button>
           ))}
         </div>

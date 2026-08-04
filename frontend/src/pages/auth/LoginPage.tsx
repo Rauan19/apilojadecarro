@@ -8,8 +8,8 @@ import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BrandLogo } from "@/components/brand/BrandLogo";
 import { useAuth } from "@/hooks/useAuth";
+import { BRAND } from "@/lib/brand";
 
 const loginSchema = z.object({
   email: z.string().min(1, "Informe seu e-mail").email("E-mail inválido"),
@@ -49,77 +49,94 @@ export function LoginPage() {
   };
 
   return (
-    <div className="grid min-h-screen bg-background lg:grid-cols-[1.05fr_0.95fr]">
-      <div className="relative hidden overflow-hidden border-r border-border lg:block">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage:
-              "linear-gradient(105deg, rgba(227,28,35,0.92) 0%, rgba(227,28,35,0.72) 42%, rgba(26,29,35,0.7) 100%), url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1600&q=80')",
-          }}
+    <div className="grid min-h-screen bg-[#12141A] lg:grid-cols-[minmax(0,1fr)_420px] xl:grid-cols-[minmax(0,1fr)_460px]">
+      <section className="relative hidden min-h-screen lg:block">
+        <img
+          src="/brand/login-showroom.jpg"
+          alt="Showroom de concessionária"
+          className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="relative z-10 flex h-full flex-col justify-between p-10 text-white">
-          <BrandLogo inverted subtitle="Gestão para revendas" markClassName="h-10 w-10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/15" />
+        <div className="absolute left-0 top-0 h-full w-1.5 bg-primary" />
 
-          <div className="max-w-md space-y-4">
-            <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight">
-              Compre e venda com o ritmo do marketplace
-            </h1>
-            <p className="max-w-sm text-sm leading-relaxed text-white/85">
-              Estoque, leads e equipe de vendas em um painel no estilo Webmotors, direto ao ponto.
+        <div className="absolute inset-0 flex items-center justify-center p-12">
+          <img
+            src={BRAND.logoUrl}
+            alt={BRAND.name}
+            className="h-44 w-auto max-w-[min(420px,70%)] object-contain drop-shadow-[0_12px_32px_rgba(0,0,0,0.5)] xl:h-52"
+          />
+        </div>
+      </section>
+
+      <section className="relative flex min-h-screen flex-col border-l border-white/10 bg-[#12141A] px-8 py-10 sm:px-12">
+        <div className="my-auto w-full max-w-[320px] self-center py-12">
+          <div className="mb-10 flex flex-col items-center text-center">
+            <img
+              src={BRAND.logoUrl}
+              alt={BRAND.name}
+              className="h-36 w-auto max-w-full object-contain sm:h-40"
+            />
+            <p className="mt-4 text-[11px] uppercase tracking-[0.14em] text-white/45">
+              {BRAND.domain}
             </p>
           </div>
 
-          <p className="text-xs text-white/55">&copy; {new Date().getFullYear()} LojaDeCarro</p>
-        </div>
-      </div>
+          <h1 className="font-display text-3xl font-bold tracking-tight text-white">Entrar</h1>
+          <p className="mt-2 text-sm text-white/55">Use o e-mail e a senha da sua conta.</p>
 
-      <div className="flex flex-col items-center justify-center bg-white px-6 py-12 sm:px-10">
-        <div className="w-full max-w-sm animate-fade-in">
-          <div className="mb-8 lg:hidden">
-            <BrandLogo subtitle="Painel" />
-          </div>
-
-          <div className="mb-8 space-y-1.5">
-            <h2 className="font-display text-2xl font-bold tracking-tight">Entrar</h2>
-            <p className="text-sm text-muted-foreground">Use o e-mail e a senha da sua conta.</p>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
             <div className="space-y-1.5">
-              <Label htmlFor="email">E-mail</Label>
-              <Input id="email" type="email" autoComplete="email" {...register("email")} />
-              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+              <Label htmlFor="email" className="text-xs font-medium text-white/65">
+                E-mail
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                className="h-11 rounded-none border-white/15 bg-[#1a1d24] px-3 text-white shadow-none placeholder:text-white/30 focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0"
+                {...register("email")}
+              />
+              {errors.email && <p className="text-xs text-red-400">{errors.email.message}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password" className="text-xs font-medium text-white/65">
+                Senha
+              </Label>
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
-                  className="pr-10"
+                  className="h-11 rounded-none border-white/15 bg-[#1a1d24] px-3 pr-11 text-white shadow-none placeholder:text-white/30 focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0"
                   {...register("password")}
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground"
+                  className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-white/40 hover:text-white/80"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+              {errors.password && <p className="text-xs text-red-400">{errors.password.message}</p>}
             </div>
 
-            <Button type="submit" className="w-full" loading={isSubmitting}>
-              Acessar painel
+            <Button
+              type="submit"
+              className="h-11 w-full rounded-none text-sm font-semibold tracking-wide shadow-none"
+              loading={isSubmitting}
+            >
+              Entrar
             </Button>
           </form>
         </div>
-      </div>
+
+        <p className="mt-auto text-center text-[11px] text-white/35">
+          &copy; {new Date().getFullYear()} {BRAND.name}
+        </p>
+      </section>
     </div>
   );
 }

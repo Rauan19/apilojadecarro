@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Settings,
   ScrollText,
+  Store,
   Target,
   UserCircle,
   UserCog,
@@ -40,6 +41,7 @@ const navByRole: Record<Role, NavItem[]> = {
   STORE_ADMIN: [
     { label: "Início", to: "/dashboard", icon: LayoutDashboard },
     { label: "Veículos", to: "/veiculos", icon: Car },
+    { label: "Ver meu estoque", to: "/meu-estoque", icon: Store },
     { label: "Clientes", to: "/clientes", icon: Users2 },
     { label: "Leads", to: "/leads", icon: Target },
     { label: "Propostas", to: "/propostas", icon: FileText },
@@ -50,6 +52,7 @@ const navByRole: Record<Role, NavItem[]> = {
   SELLER: [
     { label: "Início", to: "/dashboard", icon: LayoutDashboard },
     { label: "Veículos", to: "/veiculos", icon: Car },
+    { label: "Ver meu estoque", to: "/meu-estoque", icon: Store },
     { label: "Clientes", to: "/clientes", icon: Users2 },
     { label: "Leads", to: "/leads", icon: Target },
     { label: "Propostas", to: "/propostas", icon: FileText },
@@ -63,7 +66,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
-      <div className="flex h-16 items-center border-b border-sidebar-border px-5">
+      <div className="flex h-[4.5rem] items-center border-b border-sidebar-border px-4 sm:h-20 sm:px-5">
         <BrandLogo preferStoreBrand subtitle="Painel de Gestão" />
       </div>
 
@@ -101,7 +104,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="border-t border-sidebar-border px-6 py-4">
         <p className="text-[11px] leading-relaxed text-muted-foreground">
-          LojaDeCarro SaaS &copy; {new Date().getFullYear()}
+          EstoqueAuto &copy; {new Date().getFullYear()}
         </p>
       </div>
     </div>

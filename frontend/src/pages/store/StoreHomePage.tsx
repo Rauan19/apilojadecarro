@@ -14,6 +14,7 @@ import { VehiclePrice } from "@/components/store/VehiclePrice";
 import { cn, formatNumber } from "@/lib/utils";
 import { fuelLabels, transmissionLabels } from "@/utils/labels";
 import { parseStoreBanners } from "@/utils/storeBanners";
+import { resolveMediaUrl } from "@/utils/mediaUrl";
 import type { PublicStoreContext } from "@/layouts/PublicStoreLayout";
 import type { Vehicle } from "@/types";
 
@@ -43,7 +44,7 @@ function FilterChip({
 }
 
 function VehicleCard({ vehicle, basePath }: { vehicle: Vehicle; basePath: string }) {
-  const cover = vehicle.images?.[0]?.url;
+  const cover = resolveMediaUrl(vehicle.images?.[0]?.url);
 
   return (
     <Link to={`${basePath}/veiculo/${vehicle.id}`} className="store-card group block">

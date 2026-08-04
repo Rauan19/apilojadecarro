@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { VehiclePrice } from "@/components/store/VehiclePrice";
@@ -242,7 +243,7 @@ export function StoreVehiclePage() {
                 aria-label="Ver foto em tela cheia"
               >
                 <img
-                  src={images[activeImage]?.url}
+                  src={resolveMediaUrl(images[activeImage]?.url)}
                   alt={`${vehicle.brand} ${vehicle.model}`}
                   className="h-full w-full object-cover"
                 />
@@ -305,7 +306,7 @@ export function StoreVehiclePage() {
                     index === activeImage ? "border-primary" : "border-transparent opacity-70 hover:opacity-100"
                   }`}
                 >
-                  <img src={image.url} alt="" className="h-full w-full object-cover" />
+                  <img src={resolveMediaUrl(image.url)} alt="" className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>

@@ -87,7 +87,7 @@ async function bootstrap(): Promise<void> {
   });
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('LojaDeCarro SaaS API')
+    .setTitle('EstoqueAuto API')
     .setDescription(
       'API REST multi-tenant para gerenciamento de lojas de veículos. ' +
         'Autenticação via JWT (usuários) ou Bearer Token de API (integrações). ' +

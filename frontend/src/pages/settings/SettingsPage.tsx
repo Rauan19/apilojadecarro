@@ -544,7 +544,7 @@ export function SettingsPage() {
                         className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-[160px_1fr_auto]"
                       >
                         <div className="aspect-[5/1] overflow-hidden rounded-md bg-secondary">
-                          <img src={banner.imageUrl} alt="" className="h-full w-full object-cover" />
+                          <img src={resolveMediaUrl(banner.imageUrl)} alt="" className="h-full w-full object-cover" />
                         </div>
                         <div className="space-y-2">
                           <Input

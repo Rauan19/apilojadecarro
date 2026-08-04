@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ImagePlus, Loader2, Plus, Search, Upload, X } from "lucide-react";
+import { ImagePlus, Loader2, Plus, Upload, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -24,10 +24,11 @@ import { MAX_VEHICLE_IMAGES, vehiclesService } from "@/services/vehicles.service
 import { getApiErrorMessage } from "@/services/api";
 import { useCompany } from "@/hooks/useCompany";
 import { fuelLabels, transmissionLabels, vehicleStatusLabels } from "@/utils/labels";
-import { API_URL } from "@/services/api";
-import { isValidPlate, maskPlate, maskRenavam } from "@/lib/masks";
+import { resolveMediaUrl } from "@/utils/mediaUrl";
+import { maskPlate, maskRenavam } from "@/lib/masks";
 import { optionalPlateSchema, optionalRenavamSchema } from "@/lib/form-schemas";
 import { MaskedInput } from "@/components/ui/masked-input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { formatCurrency } from "@/lib/utils";
 import type { Vehicle } from "@/types";
 
@@ -75,12 +76,6 @@ interface VehicleFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   vehicle?: Vehicle | null;
-}
-
-function resolveImageUrl(url: string) {
-  if (url.startsWith("http")) return url;
-  const origin = API_URL.replace(/\/api\/?$/, "");
-  return `${origin}/${url.replace(/^\//, "")}`;
 }
 
 export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDialogProps) {
@@ -186,29 +181,6 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
-  const plateLookupMutation = useMutation({
-    mutationFn: (plate: string) => vehiclesService.lookupPlate(plate),
-    onSuccess: (data) => {
-      setValue("brand", data.brand, { shouldValidate: true });
-      setValue("model", data.model, { shouldValidate: true });
-      if (data.version) setValue("version", data.version);
-      if (data.year) setValue("year", data.year, { shouldValidate: true });
-      if (data.yearModel) setValue("yearModel", data.yearModel, { shouldValidate: true });
-      if (data.color) setValue("color", data.color);
-      if (data.fuel) setValue("fuel", data.fuel);
-      if (data.transmission) setValue("transmission", data.transmission);
-      if (data.doors) setValue("doors", data.doors);
-      if (data.fipePrice) setValue("price", data.fipePrice, { shouldValidate: true });
-      setValue("plate", maskPlate(data.plate), { shouldValidate: true });
-      toast.success(
-        data.source === "demo"
-          ? data.message ?? "Dados de demonstração preenchidos. Confira e ajuste."
-          : "Dados preenchidos pela placa. Confira e ajuste se necessário."
-      );
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
-  });
-
   const addOptional = () => {
     const value = optionalInput.trim();
     if (value && !optionals.includes(value)) {
@@ -240,49 +212,6 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
 
           <TabsContent value="dados">
             <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
-              <div className="rounded-lg border border-border bg-secondary/30 p-3 sm:p-4">
-                <Label htmlFor="plate">Consultar pela placa</Label>
-                <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
-                  <MaskedInput
-                    id="plate"
-                    placeholder="ABC-1234 ou ABC1D23"
-                    value={watch("plate") ?? ""}
-                    mask={maskPlate}
-                    onValueChange={(v) => setValue("plate", v)}
-                    className="sm:max-w-xs"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={
-                      plateLookupMutation.isPending ||
-                      !(watch("plate") ?? "").replace(/[^a-zA-Z0-9]/g, "")
-                    }
-                    onClick={() => {
-                      const plate = watch("plate") ?? "";
-                      if (!isValidPlate(plate)) {
-                        toast.error(
-                          "Placa inválida. Use a cinza antiga (ABC-1234) ou Mercosul (ABC1D23)."
-                        );
-                        return;
-                      }
-                      plateLookupMutation.mutate(plate);
-                    }}
-                  >
-                    {plateLookupMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Search className="h-4 w-4" />
-                    )}
-                    Consultar placa
-                  </Button>
-                </div>
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  Aceita placa cinza antiga (ABC-1234) e Mercosul (ABC1D23). A consulta preenche marca,
-                  modelo, ano, cor e combustível. A placa fica só no painel; o cliente na vitrine não vê.
-                </p>
-              </div>
-
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="brand">Marca</Label>
@@ -314,14 +243,14 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="originalPrice">Preço de (R$)</Label>
-                  <Input
+                  <Label htmlFor="originalPrice">Preço de</Label>
+                  <CurrencyInput
                     id="originalPrice"
-                    type="number"
-                    inputMode="decimal"
-                    step="0.01"
-                    placeholder="Ex: 99900"
-                    {...register("originalPrice")}
+                    placeholder="0,00"
+                    value={watch("originalPrice")}
+                    onValueChange={(v) =>
+                      setValue("originalPrice", v, { shouldValidate: true })
+                    }
                   />
                   <p className="text-[11px] text-muted-foreground">
                     Opcional. Valor riscado na vitrine (deve ser maior que o preço atual).
@@ -331,8 +260,15 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="price">Preço por (R$)</Label>
-                  <Input id="price" type="number" inputMode="decimal" step="0.01" {...register("price")} />
+                  <Label htmlFor="price">Preço por</Label>
+                  <CurrencyInput
+                    id="price"
+                    placeholder="0,00"
+                    value={watch("price")}
+                    onValueChange={(v) =>
+                      setValue("price", v ?? 0, { shouldValidate: true })
+                    }
+                  />
                   {errors.price && <p className="text-xs text-destructive">{errors.price.message}</p>}
                   {watch("originalPrice") != null &&
                     Number(watch("originalPrice")) > Number(watch("price")) &&
@@ -349,14 +285,14 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
                     )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="purchasePrice">Valor de compra (R$)</Label>
-                  <Input
+                  <Label htmlFor="purchasePrice">Valor de compra</Label>
+                  <CurrencyInput
                     id="purchasePrice"
-                    type="number"
-                    inputMode="decimal"
-                    step="0.01"
-                    placeholder="O que você pagou"
-                    {...register("purchasePrice")}
+                    placeholder="0,00"
+                    value={watch("purchasePrice")}
+                    onValueChange={(v) =>
+                      setValue("purchasePrice", v, { shouldValidate: true })
+                    }
                   />
                   <p className="text-[11px] text-muted-foreground">
                     Opcional. Custo interno da loja; não aparece na vitrine.
@@ -371,6 +307,16 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
                   <Input id="doors" type="number" inputMode="numeric" {...register("doors")} />
                 </div>
 
+                <div className="space-y-1.5">
+                  <Label htmlFor="plate">Placa</Label>
+                  <MaskedInput
+                    id="plate"
+                    placeholder="ABC-1234 ou ABC1D23"
+                    value={watch("plate") ?? ""}
+                    mask={maskPlate}
+                    onValueChange={(v) => setValue("plate", v)}
+                  />
+                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="renavam">Renavam</Label>
                   <MaskedInput
@@ -402,15 +348,15 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
                 {watch("status") === "SOLD" && (
                   <div className="space-y-3 rounded-lg border border-border bg-secondary/30 p-3 sm:col-span-2 lg:col-span-3 sm:p-4">
                     <div>
-                      <Label htmlFor="soldPrice">Valor da venda (R$)</Label>
-                      <Input
+                      <Label htmlFor="soldPrice">Valor da venda</Label>
+                      <CurrencyInput
                         id="soldPrice"
-                        type="number"
-                        inputMode="decimal"
-                        step="0.01"
                         className="mt-1.5 max-w-xs"
-                        placeholder="Por quanto vendeu"
-                        {...register("soldPrice")}
+                        placeholder="0,00"
+                        value={watch("soldPrice")}
+                        onValueChange={(v) =>
+                          setValue("soldPrice", v, { shouldValidate: true })
+                        }
                       />
                       <p className="mt-1.5 text-[11px] text-muted-foreground">
                         Opcional. Se preencher junto com o valor de compra, calculamos o lucro (venda − compra) e o
@@ -557,7 +503,7 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
               {currentVehicle?.images.map((image) => (
                 <div key={image.id} className="group relative aspect-square overflow-hidden rounded-lg border border-border">
-                  <img src={resolveImageUrl(image.url)} alt="Foto do veículo" className="h-full w-full object-cover" />
+                  <img src={resolveMediaUrl(image.url)} alt="Foto do veículo" className="h-full w-full object-cover" />
                   <button
                     type="button"
                     onClick={() => removeImageMutation.mutate(image.id)}

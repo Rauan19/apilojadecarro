@@ -195,3 +195,26 @@ export function normalizeWebsite(value?: string): string | undefined {
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   return `https://${trimmed}`;
 }
+
+/** Exibe número como 1.234.567,89 (sem R$). */
+export function formatMoneyInput(value: number): string {
+  return value.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+/** Digita só números; interpreta como centavos → reais. Vazio = null. */
+export function parseMoneyInput(value: string): number | null {
+  const digits = onlyDigits(value);
+  if (!digits) return null;
+  return Number(digits) / 100;
+}
+
+/** Máscara de digitação em tempo real para MaskedInput (string). */
+export function maskCurrency(value: string): string {
+  const parsed = parseMoneyInput(value);
+  if (parsed == null) return "";
+  return formatMoneyInput(parsed);
+}
+

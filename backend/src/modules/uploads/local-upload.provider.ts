@@ -16,11 +16,9 @@ export interface UploadedFileResult {
 @Injectable()
 export class LocalUploadProvider {
   private readonly uploadDest: string;
-  private readonly appUrl: string;
 
   constructor(private readonly config: ConfigService) {
     this.uploadDest = this.config.get<string>('UPLOAD_DEST', './uploads');
-    this.appUrl = this.config.get<string>('APP_URL', 'http://localhost:3000');
   }
 
   ensureCompanyDir(companyId: string): string {
@@ -42,13 +40,15 @@ export class LocalUploadProvider {
 
     await fs.promises.writeFile(fullPath, file.buffer);
 
-    const relativePath = `uploads/empresa-${companyId}/${filename}`;
+    // Path relativo (sem host): o frontend resolve com a origem da API.
+    // Evita URLs quebradas quando APP_URL muda (localhost → produção).
+    const relativePath = `uploads/empresa-${companyId}/${filename}`.replace(/\\/g, '/');
 
     return {
       filename,
       originalName: file.originalname,
-      url: `${this.appUrl}/${relativePath.replace(/\\/g, '/')}`,
-      path: relativePath.replace(/\\/g, '/'),
+      url: `/${relativePath}`,
+      path: relativePath,
       mimetype: file.mimetype,
       size: file.size,
     };
@@ -66,7 +66,15 @@ export class LocalUploadProvider {
   }
 
   async delete(relativePath: string): Promise<void> {
-    const fullPath = path.resolve(relativePath);
+    let cleaned = relativePath.replace(/\\/g, '/').replace(/^\/+/, '');
+    if (cleaned.startsWith('uploads/')) {
+      cleaned = cleaned.slice('uploads/'.length);
+    }
+    // URLs absolutas antigas: extrai só o path após /uploads/
+    const match = cleaned.match(/uploads\/(.+)$/);
+    if (match) cleaned = match[1];
+
+    const fullPath = path.join(this.uploadDest, cleaned);
     if (fs.existsSync(fullPath)) {
       await fs.promises.unlink(fullPath);
     }

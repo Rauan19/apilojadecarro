@@ -24,6 +24,7 @@ import { PlansPage } from "@/pages/plans/PlansPage";
 import { StoreHomePage } from "@/pages/store/StoreHomePage";
 import { StoreVehiclePage } from "@/pages/store/StoreVehiclePage";
 import { StoreContactPage } from "@/pages/store/StoreContactPage";
+import { MyStockPage } from "@/pages/store/MyStockPage";
 
 export default function App() {
   return (
@@ -58,6 +59,10 @@ export default function App() {
             <Route path="/usuarios" element={<UsersPage />} />
             <Route path="/vendedores" element={<SellersPage />} />
             <Route path="/configuracoes" element={<SettingsPage />} />
+          </Route>
+
+          <Route element={<RoleRoute roles={["STORE_ADMIN", "SELLER"]} />}>
+            <Route path="/meu-estoque" element={<MyStockPage />} />
           </Route>
 
           <Route element={<RoleRoute roles={["STORE_ADMIN", "SELLER", "SUPER_ADMIN"]} />}>
