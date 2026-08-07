@@ -1,4 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import Redis from 'ioredis';
 
 export type ConversationStep = 'menu' | 'await_vehicle_choice' | 'await_lead_name';
 
@@ -14,79 +21,155 @@ export interface ConversationState {
   updatedAt: string;
 }
 
-const MAX_PROCESSED_IDS = 500;
-const MAX_BOT_SENT_IDS = 500;
-/** Evolution às vezes reentrega o mesmo toque em botão/lista com um messageId
- * DIFERENTE (não pega no dedupe por id) — sem isso, a repetição é processada
- * como se fosse a resposta da próxima pergunta (ex.: vira "nome" do lead). */
+const SESSION_TTL_SEC = 24 * 60 * 60; // 24h sem atividade → esquece o passo
+const MSG_TTL_SEC = 60 * 60; // 1h de dedupe por messageId
+const RECENT_TEXT_TTL_SEC = 10;
 const RECENT_TEXT_WINDOW_MS = 5000;
-/** Depois desse tempo sem atividade, o bot volta a responder mesmo sem o
- * vendedor liberar explicitamente (evita ficar pausado pra sempre por esquecimento). */
+/** Depois desse tempo sem atividade humana, o bot volta a responder. */
 const HUMAN_PAUSE_TTL_MS = 6 * 60 * 60 * 1000; // 6 horas
 
 /**
- * Estado de conversa em memória, por processo. Reinicia com o backend —
- * aceitável para v1 (mesmo trade-off do bot standalone que ele substitui).
+ * Estado de conversa do bot WhatsApp.
+ * Preferência: Redis (docker compose). Fallback: memória do processo se o
+ * Redis estiver fora — o bot continua, mas perde a sessão no restart.
  */
 @Injectable()
-export class WhatsappSessionStore {
-  private readonly sessions = new Map<string, ConversationState>();
-  // Evolution/Baileys pode entregar o mesmo messages.upsert mais de uma vez
-  // (multi-device); sem isso o bot responde duplicado pra cada mensagem.
-  private readonly processedMessageIds = new Set<string>();
-  // IDs das mensagens que o próprio bot enviou, pra diferenciar de mensagem
-  // que o vendedor mandou na mão pelo mesmo número (ambas chegam como fromMe).
-  private readonly botSentMessageIds = new Set<string>();
-  // Serializa o processamento por conversa (evita corrida quando o cliente
-  // manda duas mensagens quase juntas).
+export class WhatsappSessionStore implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(WhatsappSessionStore.name);
+  private redis: Redis | null = null;
+  private redisReady = false;
+
+  // Fallback em memória (+ locks locais, que são por processo mesmo)
+  private readonly memSessions = new Map<string, ConversationState>();
+  private readonly memProcessedIds = new Set<string>();
+  private readonly memBotSentIds = new Set<string>();
+  private readonly memRecentTexts = new Map<string, { text: string; ts: number }>();
   private readonly locks = new Map<string, Promise<unknown>>();
-  private readonly recentTexts = new Map<string, { text: string; ts: number }>();
+
+  constructor(private readonly config: ConfigService) {}
+
+  async onModuleInit(): Promise<void> {
+    const url = this.config.get<string>('REDIS_URL', 'redis://127.0.0.1:6379');
+    try {
+      const client = new Redis(url, {
+        maxRetriesPerRequest: 1,
+        enableReadyCheck: true,
+        lazyConnect: true,
+        connectTimeout: 3000,
+      });
+      client.on('error', (err) => {
+        this.redisReady = false;
+        this.logger.warn(`Redis erro: ${err.message}`);
+      });
+      client.on('ready', () => {
+        this.redisReady = true;
+        this.logger.log(`Redis conectado (${url}) — sessões do bot persistidas`);
+      });
+      await client.connect();
+      await client.ping();
+      this.redis = client;
+      this.redisReady = true;
+    } catch (error) {
+      this.redis = null;
+      this.redisReady = false;
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Redis indisponível (${message}) — bot usando memória (sessão some no restart)`,
+      );
+    }
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    if (this.redis) {
+      await this.redis.quit().catch(() => undefined);
+      this.redis = null;
+      this.redisReady = false;
+    }
+  }
 
   private key(instanceName: string, remoteJid: string): string {
     return `${instanceName}:${remoteJid}`;
   }
 
+  private sessionKey(instanceName: string, remoteJid: string): string {
+    return `wa:session:${this.key(instanceName, remoteJid)}`;
+  }
+
+  private useRedis(): boolean {
+    return Boolean(this.redis && this.redisReady);
+  }
+
   /** Retorna true se já processou esse messageId antes (e marca como visto). */
-  isDuplicateMessage(instanceName: string, messageId: string): boolean {
-    const key = `${instanceName}:${messageId}`;
-    if (this.processedMessageIds.has(key)) {
-      return true;
+  async isDuplicateMessage(instanceName: string, messageId: string): Promise<boolean> {
+    const key = `wa:msg:${instanceName}:${messageId}`;
+    if (this.useRedis()) {
+      const result = await this.redis!.set(key, '1', 'EX', MSG_TTL_SEC, 'NX');
+      return result === null; // null = já existia
     }
-    this.processedMessageIds.add(key);
-    if (this.processedMessageIds.size > MAX_PROCESSED_IDS) {
-      const oldest = this.processedMessageIds.values().next().value;
-      if (oldest) this.processedMessageIds.delete(oldest);
+    if (this.memProcessedIds.has(key)) return true;
+    this.memProcessedIds.add(key);
+    if (this.memProcessedIds.size > 500) {
+      const oldest = this.memProcessedIds.values().next().value;
+      if (oldest) this.memProcessedIds.delete(oldest);
     }
     return false;
   }
 
   /**
-   * Retorna true se o mesmo texto já chegou desse contato há poucos segundos
-   * (e marca o texto atual como visto). Rede de segurança pro caso do
-   * dedupe por messageId não pegar (ids diferentes pro mesmo toque).
+   * Mesmo texto do mesmo contato em poucos segundos (Evolution às vezes
+   * reentrega toque de botão com messageId diferente).
    */
-  isRecentDuplicateText(instanceName: string, remoteJid: string, text: string): boolean {
-    const key = this.key(instanceName, remoteJid);
+  async isRecentDuplicateText(
+    instanceName: string,
+    remoteJid: string,
+    text: string,
+  ): Promise<boolean> {
+    const key = `wa:recent:${this.key(instanceName, remoteJid)}`;
     const now = Date.now();
-    const previous = this.recentTexts.get(key);
-    this.recentTexts.set(key, { text, ts: now });
+    const payload = JSON.stringify({ text, ts: now });
+
+    if (this.useRedis()) {
+      const previousRaw = await this.redis!.get(key);
+      await this.redis!.set(key, payload, 'EX', RECENT_TEXT_TTL_SEC);
+      if (!previousRaw) return false;
+      try {
+        const previous = JSON.parse(previousRaw) as { text: string; ts: number };
+        return previous.text === text && now - previous.ts < RECENT_TEXT_WINDOW_MS;
+      } catch {
+        return false;
+      }
+    }
+
+    const mapKey = this.key(instanceName, remoteJid);
+    const previous = this.memRecentTexts.get(mapKey);
+    this.memRecentTexts.set(mapKey, { text, ts: now });
     if (!previous) return false;
     return previous.text === text && now - previous.ts < RECENT_TEXT_WINDOW_MS;
   }
 
-  /** Marca um messageId como enviado pelo próprio bot. */
-  registerBotSentMessage(instanceName: string, messageId: string | null): void {
+  async registerBotSentMessage(
+    instanceName: string,
+    messageId: string | null,
+  ): Promise<void> {
     if (!messageId) return;
-    const key = `${instanceName}:${messageId}`;
-    this.botSentMessageIds.add(key);
-    if (this.botSentMessageIds.size > MAX_BOT_SENT_IDS) {
-      const oldest = this.botSentMessageIds.values().next().value;
-      if (oldest) this.botSentMessageIds.delete(oldest);
+    const key = `wa:botsent:${instanceName}:${messageId}`;
+    if (this.useRedis()) {
+      await this.redis!.set(key, '1', 'EX', MSG_TTL_SEC);
+      return;
+    }
+    this.memBotSentIds.add(key);
+    if (this.memBotSentIds.size > 500) {
+      const oldest = this.memBotSentIds.values().next().value;
+      if (oldest) this.memBotSentIds.delete(oldest);
     }
   }
 
-  isBotSentMessage(instanceName: string, messageId: string): boolean {
-    return this.botSentMessageIds.has(`${instanceName}:${messageId}`);
+  async isBotSentMessage(instanceName: string, messageId: string): Promise<boolean> {
+    const key = `wa:botsent:${instanceName}:${messageId}`;
+    if (this.useRedis()) {
+      return (await this.redis!.exists(key)) === 1;
+    }
+    return this.memBotSentIds.has(key);
   }
 
   /** Executa `fn` em fila por conversa (instância+contato), nunca em paralelo. */
@@ -101,49 +184,68 @@ export class WhatsappSessionStore {
     return run;
   }
 
-  get(instanceName: string, remoteJid: string): ConversationState | null {
-    return this.sessions.get(this.key(instanceName, remoteJid)) ?? null;
+  async get(instanceName: string, remoteJid: string): Promise<ConversationState | null> {
+    if (this.useRedis()) {
+      const raw = await this.redis!.get(this.sessionKey(instanceName, remoteJid));
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw) as ConversationState;
+      } catch {
+        return null;
+      }
+    }
+    return this.memSessions.get(this.key(instanceName, remoteJid)) ?? null;
   }
 
-  set(
+  async set(
     instanceName: string,
     remoteJid: string,
     state: Omit<ConversationState, 'updatedAt'>,
-  ): ConversationState {
+  ): Promise<ConversationState> {
     const next: ConversationState = { ...state, updatedAt: new Date().toISOString() };
-    this.sessions.set(this.key(instanceName, remoteJid), next);
+    if (this.useRedis()) {
+      await this.redis!.set(
+        this.sessionKey(instanceName, remoteJid),
+        JSON.stringify(next),
+        'EX',
+        SESSION_TTL_SEC,
+      );
+      return next;
+    }
+    this.memSessions.set(this.key(instanceName, remoteJid), next);
     return next;
   }
 
-  clear(instanceName: string, remoteJid: string): void {
-    this.sessions.delete(this.key(instanceName, remoteJid));
+  async clear(instanceName: string, remoteJid: string): Promise<void> {
+    if (this.useRedis()) {
+      await this.redis!.del(this.sessionKey(instanceName, remoteJid));
+      return;
+    }
+    this.memSessions.delete(this.key(instanceName, remoteJid));
   }
 
   /** Registra que um humano respondeu manualmente esse contato agora. */
-  markHumanReply(instanceName: string, remoteJid: string): void {
-    const key = this.key(instanceName, remoteJid);
-    const current = this.sessions.get(key);
-    this.sessions.set(key, {
+  async markHumanReply(instanceName: string, remoteJid: string): Promise<void> {
+    const current = await this.get(instanceName, remoteJid);
+    await this.set(instanceName, remoteJid, {
       ...(current ?? { step: 'menu' }),
       humanPausedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     });
   }
 
   /** Bot pausado pra esse contato (vendedor assumiu) e ainda dentro do prazo. */
-  isHumanPaused(instanceName: string, remoteJid: string): boolean {
-    const session = this.get(instanceName, remoteJid);
+  async isHumanPaused(instanceName: string, remoteJid: string): Promise<boolean> {
+    const session = await this.get(instanceName, remoteJid);
     if (!session?.humanPausedAt) return false;
     const elapsed = Date.now() - new Date(session.humanPausedAt).getTime();
     return elapsed < HUMAN_PAUSE_TTL_MS;
   }
 
-  /** Libera o bot pra voltar a responder esse contato (retomada explícita). */
-  clearHumanPause(instanceName: string, remoteJid: string): void {
-    const key = this.key(instanceName, remoteJid);
-    const current = this.sessions.get(key);
-    if (current) {
-      delete current.humanPausedAt;
-    }
+  /** Libera o bot pra voltar a responder esse contato. */
+  async clearHumanPause(instanceName: string, remoteJid: string): Promise<void> {
+    const current = await this.get(instanceName, remoteJid);
+    if (!current?.humanPausedAt) return;
+    const { humanPausedAt: _removed, ...rest } = current;
+    await this.set(instanceName, remoteJid, rest);
   }
 }

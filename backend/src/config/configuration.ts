@@ -48,4 +48,6 @@ export default () => ({
   /** Hora (0-23) em que o cron diário de cobrança roda. */
   BILLING_CRON_HOUR: parseInt(process.env.BILLING_CRON_HOUR ?? '9', 10),
   BILLING_TIMEZONE: process.env.BILLING_TIMEZONE ?? 'America/Sao_Paulo',
+  /** Redis — sessão do bot WhatsApp (docker compose sobe na 6379). */
+  REDIS_URL: process.env.REDIS_URL ?? 'redis://127.0.0.1:6379',
 });

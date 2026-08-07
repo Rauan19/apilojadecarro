@@ -24,6 +24,45 @@ function isGreeting(text: string): boolean {
   return GREETING_PATTERN.test(text.trim());
 }
 
+const BLOCKED_LEAD_NAMES = new Set([
+  'ok',
+  'sim',
+  'nao',
+  'não',
+  'menu',
+  'oi',
+  'ola',
+  'olá',
+  'bom dia',
+  'boa tarde',
+  'boa noite',
+  'obrigado',
+  'obrigada',
+  'valeu',
+  'blz',
+  'beleza',
+  'tudo bem',
+  'td bem',
+  '?',
+  '.',
+  '!',
+  'oi',
+  'hey',
+  'alo',
+  'alô',
+]);
+
+/** Nome de lead: pelo menos 2 letras, não só número/emoji/resposta curta. */
+function isValidLeadName(raw: string): boolean {
+  const name = raw.trim().replace(/\s+/g, ' ');
+  if (name.length < 2 || name.length > 80) return false;
+  if (/^\d+$/.test(name)) return false;
+  const letters = name.match(/\p{L}/gu) ?? [];
+  if (letters.length < 2) return false;
+  if (BLOCKED_LEAD_NAMES.has(name.toLowerCase())) return false;
+  return true;
+}
+
 interface StoreSettings {
   businessHoursStart?: string;
   businessHoursEnd?: string;
@@ -111,12 +150,12 @@ export class WhatsappBotService {
     if (message.fromMe) {
       if (
         message.messageId &&
-        this.sessions.isBotSentMessage(message.instanceName, message.messageId)
+        (await this.sessions.isBotSentMessage(message.instanceName, message.messageId))
       ) {
         return; // eco da nossa própria mensagem, nada a fazer
       }
       // vendedor assumiu a conversa manualmente: pausa o bot pra esse contato
-      this.sessions.markHumanReply(message.instanceName, message.remoteJid);
+      await this.sessions.markHumanReply(message.instanceName, message.remoteJid);
       this.logger.log(
         `🧑‍💼 Resposta manual detectada em [${message.instanceName}] ${message.remoteJid} — bot pausado`,
       );
@@ -128,12 +167,18 @@ export class WhatsappBotService {
 
     if (
       message.messageId &&
-      this.sessions.isDuplicateMessage(message.instanceName, message.messageId)
+      (await this.sessions.isDuplicateMessage(message.instanceName, message.messageId))
     ) {
       return;
     }
 
-    if (this.sessions.isRecentDuplicateText(message.instanceName, message.remoteJid, text)) {
+    if (
+      await this.sessions.isRecentDuplicateText(
+        message.instanceName,
+        message.remoteJid,
+        text,
+      )
+    ) {
       this.logger.log(`♻️  Texto repetido em poucos segundos, ignorando: "${text}"`);
       return;
     }
@@ -155,7 +200,7 @@ export class WhatsappBotService {
     // Vendedor assumiu esse contato: só volta a responder se o cliente pedir
     // o menu explicitamente (retomada manual do bot).
     if (
-      this.sessions.isHumanPaused(message.instanceName, message.remoteJid) &&
+      (await this.sessions.isHumanPaused(message.instanceName, message.remoteJid)) &&
       !isMenuCommand(text)
     ) {
       this.logger.log(
@@ -163,7 +208,7 @@ export class WhatsappBotService {
       );
       return;
     }
-    this.sessions.clearHumanPause(message.instanceName, message.remoteJid);
+    await this.sessions.clearHumanPause(message.instanceName, message.remoteJid);
 
     // Serializa por conversa: evita que duas mensagens quase simultâneas do
     // mesmo cliente sejam processadas em paralelo e gerem resposta duplicada/errada.
@@ -196,7 +241,7 @@ export class WhatsappBotService {
   }): Promise<void> {
     const { instanceName, companyId, companyName, companySettings, remoteJid } = params;
     const normalized = params.text.toLowerCase();
-    const session = this.sessions.get(instanceName, remoteJid);
+    const session = await this.sessions.get(instanceName, remoteJid);
     const inActiveFlow = Boolean(session) && session!.step !== 'menu';
 
     if (isMenuCommand(params.text) || !session || (isGreeting(params.text) && !inActiveFlow)) {
@@ -246,7 +291,7 @@ export class WhatsappBotService {
 
       await this.sendVehicleDetail(instanceName, remoteJid, companyId, selected.id);
 
-      this.sessions.set(instanceName, remoteJid, {
+      await this.sessions.set(instanceName, remoteJid, {
         step: 'await_lead_name',
         selectedVehicleId: selected.id,
         vehicles: session.vehicles,
@@ -261,6 +306,14 @@ export class WhatsappBotService {
 
     if (session.step === 'await_lead_name') {
       const name = params.text.trim().slice(0, 80);
+      if (!isValidLeadName(name)) {
+        await this.sendTracked(
+          instanceName,
+          remoteJid,
+          'Por favor, me diga seu *nome* (ex.: Maria Silva) para eu registrar o contato.\n\nOu digite *menu* para voltar.',
+        );
+        return;
+      }
       const notes = session.selectedVehicleId
         ? 'Lead gerado pelo bot WhatsApp (interesse em veículo)'
         : session.leadReason === 'financiamento'
@@ -286,14 +339,14 @@ export class WhatsappBotService {
           `Anotei seu interesse, *${name}*. Em breve a loja entra em contato.\n\nDigite *menu* para voltar.`,
         );
       }
-      this.sessions.clear(instanceName, remoteJid);
+      await this.sessions.clear(instanceName, remoteJid);
     }
   }
 
   /** sendText que registra o id devolvido, pra reconhecer o próprio eco no webhook. */
   private async sendTracked(instanceName: string, remoteJid: string, text: string): Promise<void> {
     const id = await this.evolution.sendText(instanceName, jidToNumber(remoteJid), text);
-    this.sessions.registerBotSentMessage(instanceName, id);
+    await this.sessions.registerBotSentMessage(instanceName, id);
   }
 
   private async sendMenu(
@@ -328,8 +381,8 @@ export class WhatsappBotService {
         },
       ],
     });
-    this.sessions.registerBotSentMessage(instanceName, id);
-    this.sessions.set(instanceName, remoteJid, { step: 'menu' });
+    await this.sessions.registerBotSentMessage(instanceName, id);
+    await this.sessions.set(instanceName, remoteJid, { step: 'menu' });
   }
 
   private formatBusinessHours(settings: StoreSettings): string {
@@ -364,7 +417,7 @@ export class WhatsappBotService {
     }
 
     await this.sendTracked(instanceName, remoteJid, message);
-    this.sessions.set(instanceName, remoteJid, { step: 'await_lead_name', leadReason: reason });
+    await this.sessions.set(instanceName, remoteJid, { step: 'await_lead_name', leadReason: reason });
   }
 
   private async sendStock(
@@ -389,7 +442,7 @@ export class WhatsappBotService {
           ? `Não encontrei veículos na faixa *${filter.label}* no momento.\nDigite *menu* para voltar.`
           : 'No momento não há veículos disponíveis.\nDigite *menu* para voltar.',
       );
-      this.sessions.set(instanceName, remoteJid, { step: 'menu' });
+      await this.sessions.set(instanceName, remoteJid, { step: 'menu' });
       return;
     }
 
@@ -410,8 +463,8 @@ export class WhatsappBotService {
         },
       ],
     });
-    this.sessions.registerBotSentMessage(instanceName, id);
-    this.sessions.set(instanceName, remoteJid, {
+    await this.sessions.registerBotSentMessage(instanceName, id);
+    await this.sessions.set(instanceName, remoteJid, {
       step: 'await_vehicle_choice',
       vehicles: vehicles.map((v) => ({
         id: v.id,
@@ -457,7 +510,7 @@ export class WhatsappBotService {
           media: mediaUrl,
           fileName,
         });
-        this.sessions.registerBotSentMessage(instanceName, id);
+        await this.sessions.registerBotSentMessage(instanceName, id);
       } catch (error) {
         this.logger.warn(
           `Falha ao enviar foto do veículo ${vehicleId} (${mediaUrl}): ${error}`,
