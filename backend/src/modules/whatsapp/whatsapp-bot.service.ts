@@ -450,6 +450,7 @@ export class WhatsappBotService {
       try {
         const fileName =
           mediaUrl.split('/').pop()?.split('?')[0] || `veiculo-${i + 1}.jpg`;
+        this.logger.log(`📸 Enviando foto do veículo ${vehicleId}: ${mediaUrl}`);
         const id = await this.evolution.sendMedia(instanceName, {
           number,
           media: mediaUrl,
@@ -473,18 +474,14 @@ export class WhatsappBotService {
   }
 
   /**
-   * Evolution só aceita http(s) ou base64. Paths relativos do banco
-   * (`/uploads/...`) precisam do host público da API.
+   * Evolution só aceita http(s) público ou base64. Paths relativos e URLs de
+   * localhost (salvas em dev) precisam virar o host público da API.
    */
   private resolvePublicMediaUrl(raw: string | null | undefined): string | null {
     const value = (raw ?? '').trim();
     if (!value) return null;
 
-    if (/^https?:\/\//i.test(value)) {
-      return value;
-    }
-
-    const base = (
+    const publicBase = (
       this.config.get<string>('EVOLUTION_MEDIA_BASE_URL') ||
       this.config.get<string>('APP_URL') ||
       ''
@@ -492,15 +489,38 @@ export class WhatsappBotService {
       .trim()
       .replace(/\/$/, '');
 
-    if (!base || !/^https?:\/\//i.test(base)) {
+    let pathPart = value;
+
+    if (/^https?:\/\//i.test(value)) {
+      try {
+        const parsed = new URL(value);
+        const isLocalHost =
+          parsed.hostname === 'localhost' ||
+          parsed.hostname === '127.0.0.1' ||
+          parsed.hostname === '0.0.0.0' ||
+          parsed.hostname === 'host.docker.internal';
+
+        if (!isLocalHost) {
+          return value;
+        }
+        // Foto gravada em dev com localhost — troca pro domínio público.
+        pathPart = parsed.pathname + parsed.search;
+      } catch {
+        return null;
+      }
+    }
+
+    if (!publicBase || !/^https?:\/\//i.test(publicBase)) {
       this.logger.warn(
-        `EVOLUTION_MEDIA_BASE_URL/APP_URL ausente ou inválido ("${base}"). ` +
+        `EVOLUTION_MEDIA_BASE_URL/APP_URL ausente ou inválido ("${publicBase}"). ` +
           'Defina https://api.seu-dominio.com no .env',
       );
       return null;
     }
 
-    return `${base}/${value.replace(/^\//, '')}`;
+    const resolved = `${publicBase}/${pathPart.replace(/^\//, '')}`;
+    this.logger.debug(`Mídia resolvida: "${value}" → "${resolved}"`);
+    return resolved;
   }
 
   private async createLead(
