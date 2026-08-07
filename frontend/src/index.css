@@ -327,4 +327,141 @@
       linear-gradient(90deg, hsl(var(--foreground) / 0.05) 1px, transparent 1px);
     background-size: 32px 32px;
   }
+
+  .dashboard-board,
+  .vehicles-board {
+    animation: dashboard-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .login-board .login-brand {
+    animation: login-rise 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .login-board .login-copy h1 > span {
+    display: block;
+    animation: login-rise 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .login-board .login-copy h1 > span:nth-child(1) {
+    animation-delay: 0.12s;
+  }
+
+  .login-board .login-copy h1 > span:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .login-board .login-copy h1 > span:nth-child(3) {
+    animation-delay: 0.28s;
+  }
+
+  .login-board .login-copy p {
+    animation: login-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.38s both;
+  }
+
+  .login-board .login-panel {
+    animation: login-panel-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.14s both;
+  }
+
+  .login-board .login-scene {
+    animation: login-scene-in 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .login-board .login-brand,
+    .login-board .login-copy,
+    .login-board .login-copy h1 > span,
+    .login-board .login-copy p,
+    .login-board .login-panel,
+    .login-board .login-scene {
+      animation: none;
+    }
+  }
+
+  .dashboard-hero {
+    animation: dashboard-hero-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .dashboard-board > :nth-child(n + 2) {
+    animation: dashboard-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .dashboard-board > :nth-child(2) {
+    animation-delay: 0.06s;
+  }
+  .dashboard-board > :nth-child(3) {
+    animation-delay: 0.12s;
+  }
+  .dashboard-board > :nth-child(4) {
+    animation-delay: 0.16s;
+  }
+  .dashboard-board > :nth-child(5) {
+    animation-delay: 0.2s;
+  }
+  .dashboard-board > :nth-child(6) {
+    animation-delay: 0.24s;
+  }
+}
+
+@keyframes dashboard-enter {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dashboard-hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dashboard-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes login-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes login-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes login-scene-in {
+  from {
+    opacity: 0;
+    filter: saturate(0.7) brightness(0.85);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+  }
 }

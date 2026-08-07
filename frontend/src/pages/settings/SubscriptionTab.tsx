@@ -90,7 +90,7 @@ export function SubscriptionTab({ companyId }: { companyId?: string }) {
       void queryClient.invalidateQueries({ queryKey: ["billing-invoices", companyId] });
       toast.success(
         result.openInvoice
-          ? "PIX gerado — pague para ativar o plano"
+          ? "PIX pronto — pague para ativar o plano"
           : "Plano atualizado com sucesso"
       );
     },

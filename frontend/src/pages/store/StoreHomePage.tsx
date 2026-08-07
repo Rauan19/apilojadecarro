@@ -336,7 +336,6 @@ export function StoreHomePage() {
   });
 
   const settings = (company?.settings ?? {}) as Record<string, any>;
-  const location = company?.city ?? "";
   const banners = parseStoreBanners(settings.banners);
   const hasActiveFilters =
     filters.type !== "all" ||
@@ -352,18 +351,9 @@ export function StoreHomePage() {
     setPage(1);
   };
 
-  const fallbackTitle = `Carros novos e usados${location ? ` em ${location}` : " no nosso estoque"}`;
-  const fallbackSubtitle = settings.about
-    ? String(settings.about).slice(0, 120) + (String(settings.about).length > 120 ? "…" : "")
-    : "Compare preços, quilometragem e fale direto com a loja.";
-
   return (
     <div>
-      <StoreBannerCarousel
-        banners={banners}
-        fallbackTitle={fallbackTitle}
-        fallbackSubtitle={fallbackSubtitle}
-      />
+      <StoreBannerCarousel banners={banners} />
 
       <section
         id="estoque"

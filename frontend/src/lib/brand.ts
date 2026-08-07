@@ -7,5 +7,5 @@ export const BRAND = {
   primary: "#E31C23",
   dark: "#12141A",
   logoUrl: "/brand/estoqueauto-logo.png?v=2",
-  markUrl: "/brand/estoqueauto-logo.png?v=2",
+  markUrl: "/brand/estoqueauto-mark.png?v=2",
 } as const;

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { BRAND } from "@/lib/brand";
+import { LoginShowroomScene } from "@/components/auth/LoginShowroomScene";
 
 const loginSchema = z.object({
   email: z.string().min(1, "Informe seu e-mail").email("E-mail inválido"),
@@ -17,6 +18,23 @@ const loginSchema = z.object({
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
+
+const inputClass =
+  "h-12 rounded-none border-0 border-b border-white/15 bg-transparent px-0 text-[15px] text-white shadow-none placeholder:text-white/30 focus-visible:border-primary focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0";
+
+function BrandWordmark({ className }: { className?: string }) {
+  return (
+    <p
+      className={
+        className ??
+        "font-display text-[1.85rem] font-bold leading-none tracking-[-0.035em] drop-shadow-[0_2px_18px_rgba(0,0,0,0.85)] sm:text-[2.35rem] lg:text-5xl xl:text-[3.25rem]"
+      }
+    >
+      <span className="text-white">ESTOQUE</span>
+      <span className="text-primary">AUTO</span>
+    </p>
+  );
+}
 
 export function LoginPage() {
   const { login, isAuthenticated } = useAuth();
@@ -34,7 +52,7 @@ export function LoginPage() {
   });
 
   if (isAuthenticated) {
-    const from = (location.state as { from?: Location })?.from?.pathname ?? "/dashboard";
+    const from = (location.state as { from?: { pathname?: string } })?.from?.pathname ?? "/dashboard";
     return <Navigate to={from} replace />;
   }
 
@@ -49,94 +67,118 @@ export function LoginPage() {
   };
 
   return (
-    <div className="grid min-h-screen bg-[#12141A] lg:grid-cols-[minmax(0,1fr)_420px] xl:grid-cols-[minmax(0,1fr)_460px]">
-      <section className="relative hidden min-h-screen lg:block">
-        <img
-          src="/brand/login-showroom.jpg"
-          alt="Showroom de concessionária"
-          className="absolute inset-0 h-full w-full object-cover"
+    <div className="login-board relative min-h-svh overflow-hidden bg-[#0a0b0f]">
+      {/* Cena full-bleed — pátio em movimento */}
+      <div className="absolute inset-0">
+        <LoginShowroomScene />
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(105deg, rgba(10,11,15,0.4) 0%, rgba(10,11,15,0.1) 38%, rgba(10,11,15,0.02) 58%, rgba(18,20,26,0.9) 100%), linear-gradient(to top, rgba(10,11,15,0.82) 0%, rgba(10,11,15,0.35) 28%, transparent 52%)",
+          }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/15" />
-        <div className="absolute left-0 top-0 h-full w-1.5 bg-primary" />
+      </div>
 
-        <div className="absolute inset-0 flex items-center justify-center p-12">
-          <img
-            src={BRAND.logoUrl}
-            alt={BRAND.name}
-            className="h-44 w-auto max-w-[min(420px,70%)] object-contain drop-shadow-[0_12px_32px_rgba(0,0,0,0.5)] xl:h-52"
-          />
-        </div>
-      </section>
-
-      <section className="relative flex min-h-screen flex-col border-l border-white/10 bg-[#12141A] px-8 py-10 sm:px-12">
-        <div className="my-auto w-full max-w-[320px] self-center py-12">
-          <div className="mb-10 flex flex-col items-center text-center">
-            <img
-              src={BRAND.logoUrl}
-              alt={BRAND.name}
-              className="h-36 w-auto max-w-full object-contain sm:h-40"
-            />
-            <p className="mt-4 text-[11px] uppercase tracking-[0.14em] text-white/45">
-              {BRAND.domain}
-            </p>
+      <div className="relative z-10 flex min-h-svh flex-col lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,460px)]">
+        {/* Lado marca — só desktop; no mobile o form manda */}
+        <section className="login-brand-panel relative hidden min-h-0 flex-col justify-between px-10 pb-14 pt-10 lg:flex lg:px-14 xl:px-20">
+          <div className="login-brand">
+            <BrandWordmark />
+            <span className="sr-only">{BRAND.name}</span>
           </div>
 
-          <h1 className="font-display text-3xl font-bold tracking-tight text-white">Entrar</h1>
-          <p className="mt-2 text-sm text-white/55">Use o e-mail e a senha da sua conta.</p>
+          <div className="login-copy relative mt-auto max-w-2xl">
+            <div
+              className="pointer-events-none absolute -inset-x-6 -bottom-6 -top-10 rounded-sm bg-gradient-to-t from-[#0a0b0f] via-[#0a0b0f]/80 to-transparent"
+              aria-hidden
+            />
 
-          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-xs font-medium text-white/65">
-                E-mail
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                className="h-11 rounded-none border-white/15 bg-[#1a1d24] px-3 text-white shadow-none placeholder:text-white/30 focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0"
-                {...register("email")}
-              />
-              {errors.email && <p className="text-xs text-red-400">{errors.email.message}</p>}
+            <h1 className="relative font-display text-[4.35rem] font-bold leading-[0.92] tracking-[-0.04em] text-white xl:text-[5rem]">
+              <span className="block">Carros.</span>
+              <span className="block">Motos.</span>
+              <span className="block text-primary">Estoque vivo.</span>
+            </h1>
+
+            <p className="relative mt-6 max-w-lg text-xl font-medium leading-snug text-white/85">
+              O pátio da loja no painel — cada veículo, cada lead, cada venda.
+            </p>
+          </div>
+        </section>
+
+        {/* Painel de acesso — prioridade no mobile */}
+        <section className="login-panel relative flex min-h-svh flex-1 flex-col justify-center bg-[#12141A] px-6 py-8 sm:px-10 lg:min-h-0 lg:border-l lg:border-white/10 lg:px-12 lg:py-14">
+          <div className="relative mx-auto w-full max-w-[360px]">
+            <div className="login-brand mb-8 lg:hidden">
+              <BrandWordmark className="font-display text-2xl font-bold leading-none tracking-[-0.03em]" />
+              <span className="sr-only">{BRAND.name}</span>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-xs font-medium text-white/65">
-                Senha
-              </Label>
-              <div className="relative">
+            <h2 className="font-display text-[1.65rem] font-bold tracking-tight text-white sm:text-2xl">
+              Acesse sua loja
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-white/50">
+              Entre com o e-mail da equipe pra abrir o painel.
+            </p>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-7 lg:mt-10">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-[13px] font-medium text-white/55">
+                  E-mail
+                </Label>
                 <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  className="h-11 rounded-none border-white/15 bg-[#1a1d24] px-3 pr-11 text-white shadow-none placeholder:text-white/30 focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0"
-                  {...register("password")}
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="voce@sualoja.com.br"
+                  className={inputClass}
+                  {...register("email")}
                 />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-white/40 hover:text-white/80"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+                {errors.email && <p className="text-xs text-red-400">{errors.email.message}</p>}
               </div>
-              {errors.password && <p className="text-xs text-red-400">{errors.password.message}</p>}
-            </div>
 
-            <Button
-              type="submit"
-              className="h-11 w-full text-sm font-semibold tracking-wide"
-              loading={isSubmitting}
-            >
-              Entrar
-            </Button>
-          </form>
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-[13px] font-medium text-white/55">
+                  Senha
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    placeholder="Sua senha"
+                    className={`${inputClass} pr-11`}
+                    {...register("password")}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-white/35 transition hover:text-white/85"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-xs text-red-400">{errors.password.message}</p>
+                )}
+              </div>
 
-        <p className="mt-auto text-center text-[11px] text-white/35">
-          &copy; {new Date().getFullYear()} {BRAND.name}
-        </p>
-      </section>
+              <Button
+                type="submit"
+                className="mt-2 h-12 w-full text-[15px] font-semibold"
+                loading={isSubmitting}
+              >
+                Entrar no painel
+              </Button>
+            </form>
+
+            <p className="mt-10 text-center text-[11px] tracking-wide text-white/30 lg:mt-12">
+              &copy; {new Date().getFullYear()} {BRAND.name}
+            </p>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

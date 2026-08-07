@@ -175,6 +175,15 @@ export class BillingService {
       return this.toSubscriptionResponse(existing, company, openInvoice);
     }
 
+    // Já tem PIX ainda válido no MESMO plano: devolve o QR atual.
+    // Recriar cancelaria a fatura antiga e deixaria dois PIX vivos no MP.
+    if (existing && existing.planId === plan.id) {
+      const openInvoice = await this.findOpenInvoice(existing.id);
+      if (openInvoice && this.isPixStillValid(openInvoice)) {
+        return this.toSubscriptionResponse(existing, company, openInvoice);
+      }
+    }
+
     const subscription = existing
       ? await this.prisma.subscription.update({
           where: { id: existing.id },
@@ -199,7 +208,7 @@ export class BillingService {
       data: { planId: plan.id },
     });
 
-    // Cobranças antigas em aberto não valem mais.
+    // Só chega aqui se não havia PIX válido: cancela pendentes velhas e emite.
     await this.prisma.invoice.updateMany({
       where: { subscriptionId: subscription.id, status: InvoiceStatus.PENDING },
       data: { status: InvoiceStatus.CANCELED },
@@ -243,12 +252,7 @@ export class BillingService {
     }
 
     // Ainda válido: devolve o mesmo QR em vez de gerar cobrança duplicada.
-    if (
-      invoice.status === InvoiceStatus.PENDING &&
-      invoice.pixQrCode &&
-      invoice.pixExpiresAt &&
-      invoice.pixExpiresAt.getTime() > Date.now()
-    ) {
+    if (this.isPixStillValid(invoice)) {
       return this.toInvoiceResponse(invoice);
     }
 
@@ -390,8 +394,16 @@ export class BillingService {
   /**
    * Confirma o pagamento e estende o ciclo. Idempotente: chamar duas vezes
    * para a mesma fatura não soma dois meses.
+   *
+   * Aceita pagamento mesmo se a fatura foi CANCELED/EXPIRED no painel — o
+   * cliente pode ter pago um QR antigo que ainda existia no banco. Depois
+   * cancela qualquer outra PENDING da mesma assinatura. Se o ciclo já estava
+   * coberto por outro pagamento, só registra a fatura como paga (sem somar
+   * outro mês) e deixa rastros no log pra eventual estorno no MP.
    */
   async markInvoicePaid(invoiceId: string, paidAt: Date): Promise<void> {
+    let extended = false;
+
     await this.prisma.$transaction(async (tx) => {
       const invoice = await tx.invoice.findUnique({
         where: { id: invoiceId },
@@ -406,6 +418,29 @@ export class BillingService {
         where: { id: invoice.id },
         data: { status: InvoiceStatus.PAID, paidAt },
       });
+
+      // Outros PIX do mesmo ciclo deixam de valer no nosso lado.
+      await tx.invoice.updateMany({
+        where: {
+          subscriptionId: invoice.subscriptionId,
+          status: InvoiceStatus.PENDING,
+          id: { not: invoice.id },
+        },
+        data: { status: InvoiceStatus.CANCELED },
+      });
+
+      const sub = invoice.subscription;
+      const cycleAlreadyCovered =
+        sub.status === SubscriptionStatus.ACTIVE &&
+        !!sub.currentPeriodEnd &&
+        sub.currentPeriodEnd.getTime() >= invoice.periodEnd.getTime();
+
+      if (cycleAlreadyCovered) {
+        this.logger.warn(
+          `⚠️  Fatura ${invoiceId} paga, mas o ciclo já estava coberto — possível PIX duplicado (revisar estorno no MP)`,
+        );
+        return;
+      }
 
       await tx.subscription.update({
         where: { id: invoice.subscriptionId },
@@ -427,9 +462,13 @@ export class BillingService {
           data: { status: CompanyStatus.ACTIVE },
         });
       }
+
+      extended = true;
     });
 
-    this.logger.log(`💰 Fatura ${invoiceId} paga — ciclo estendido`);
+    if (extended) {
+      this.logger.log(`💰 Fatura ${invoiceId} paga — ciclo estendido`);
+    }
   }
 
   // -------------------------------------------------------------- webhook
@@ -550,6 +589,21 @@ export class BillingService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /** PIX ainda utilizável: pendente, com QR e dentro do prazo. */
+  private isPixStillValid(
+    invoice: Pick<
+      Invoice,
+      'status' | 'pixQrCode' | 'pixExpiresAt'
+    >,
+  ): boolean {
+    return (
+      invoice.status === InvoiceStatus.PENDING &&
+      !!invoice.pixQrCode &&
+      !!invoice.pixExpiresAt &&
+      invoice.pixExpiresAt.getTime() > Date.now()
+    );
   }
 
   private async findInvoiceForPayment(

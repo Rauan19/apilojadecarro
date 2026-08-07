@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-interface StockLotSegment {
+export interface StockLotSegment {
   key: string;
   label: string;
   count: number;
@@ -12,56 +12,64 @@ const toneBg: Record<StockLotSegment["tone"], string> = {
   success: "bg-success",
   warning: "bg-[hsl(var(--warning))]",
   destructive: "bg-destructive",
-  neutral: "bg-muted-foreground/40",
+  neutral: "bg-muted-foreground/35",
 };
 
-const toneDot: Record<StockLotSegment["tone"], string> = {
-  primary: "bg-primary",
-  success: "bg-success",
-  warning: "bg-[hsl(var(--warning))]",
-  destructive: "bg-destructive",
-  neutral: "bg-muted-foreground",
+const toneText: Record<StockLotSegment["tone"], string> = {
+  primary: "text-primary",
+  success: "text-success",
+  warning: "text-[hsl(var(--warning))]",
+  destructive: "text-destructive",
+  neutral: "text-muted-foreground",
 };
 
-const TOTAL_TILES = 42;
-
-/** Visualização do estoque como um "lote" de blocos — cada bloco é uma fatia
- * proporcional do total, agrupada por status. Não é 1 bloco = 1 veículo
- * (ficaria ilegível com estoques grandes); é uma leitura de composição rápida,
- * no lugar do gráfico de pizza genérico. */
+/** Mapa do pátio: faixa proporcional + contagem tipográfica por status. */
 export function StockLot({ segments }: { segments: StockLotSegment[] }) {
   const total = segments.reduce((sum, s) => sum + s.count, 0);
-  const withTiles = segments.map((s) => ({
-    ...s,
-    tiles: total > 0 && s.count > 0 ? Math.max(1, Math.round((s.count / total) * TOTAL_TILES)) : 0,
-  }));
+  const active = segments.filter((s) => s.count > 0);
+
+  if (total === 0) {
+    return <p className="text-sm text-muted-foreground">Nenhum veículo cadastrado ainda.</p>;
+  }
 
   return (
     <div>
-      <div className="flex flex-wrap gap-1">
-        {total === 0 && (
-          <p className="text-sm text-muted-foreground">Nenhum veículo cadastrado ainda.</p>
-        )}
-        {withTiles.map((segment) =>
-          Array.from({ length: segment.tiles }).map((_, i) => (
-            <span
-              key={`${segment.key}-${i}`}
-              className={cn("h-4 w-2.5", toneBg[segment.tone])}
-              title={segment.label}
+      <div className="flex h-12 overflow-hidden rounded-md sm:h-14">
+        {active.map((segment, i) => {
+          const pct = (segment.count / total) * 100;
+          return (
+            <div
+              key={segment.key}
+              className={cn(
+                "relative min-w-[0.35rem] transition-[flex-grow] duration-500",
+                toneBg[segment.tone],
+                i > 0 && "border-l border-white/25",
+              )}
+              style={{ flexGrow: Math.max(pct, 2.5), flexBasis: 0 }}
+              title={`${segment.label}: ${segment.count}`}
             />
-          ))
-        )}
+          );
+        })}
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
-        {segments.map((segment) => (
-          <div key={segment.key} className="flex items-center gap-2">
-            <span className={cn("h-2 w-2 shrink-0", toneDot[segment.tone])} />
-            <span className="truncate text-xs text-muted-foreground">{segment.label}</span>
-            <span className="ml-auto font-display text-sm font-bold tabular-nums text-foreground">
-              {segment.count}
-            </span>
-          </div>
-        ))}
+
+      <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
+        {segments.map((segment) => {
+          const pct = total > 0 ? Math.round((segment.count / total) * 100) : 0;
+          return (
+            <div key={segment.key} className="min-w-0">
+              <p className="truncate text-sm text-muted-foreground">{segment.label}</p>
+              <p
+                className={cn(
+                  "mt-1 font-display text-3xl font-bold tracking-tight tabular-nums sm:text-4xl",
+                  segment.count > 0 ? toneText[segment.tone] : "text-muted-foreground/50",
+                )}
+              >
+                {segment.count}
+              </p>
+              <p className="mt-1 text-xs tabular-nums text-muted-foreground">{pct}% do estoque</p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

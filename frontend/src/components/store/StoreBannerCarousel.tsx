@@ -5,17 +5,10 @@ import type { StoreBanner } from "@/utils/storeBanners";
 
 interface StoreBannerCarouselProps {
   banners: StoreBanner[];
-  fallbackTitle?: string;
-  fallbackSubtitle?: string;
 }
 
-export function StoreBannerCarousel({
-  banners,
-  fallbackTitle,
-  fallbackSubtitle,
-}: StoreBannerCarouselProps) {
+export function StoreBannerCarousel({ banners }: StoreBannerCarouselProps) {
   const [index, setIndex] = React.useState(0);
-  const hasBanners = banners.length > 0;
   const touchStartX = React.useRef<number | null>(null);
 
   React.useEffect(() => {
@@ -46,46 +39,16 @@ export function StoreBannerCarousel({
     else goNext();
   };
 
-  if (!hasBanners) {
-    return (
-      <section className="border-b border-[#e6e6e6] bg-[#2e2e2e] text-white">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
-          <h1 className="font-display text-lg font-bold tracking-tight sm:text-2xl">
-            {fallbackTitle ?? "Estoque da loja"}
-          </h1>
-          {fallbackSubtitle && (
-            <p className="mt-1 max-w-2xl text-sm leading-snug text-white/75 sm:text-base">{fallbackSubtitle}</p>
-          )}
-        </div>
-      </section>
-    );
-  }
+  if (banners.length === 0) return null;
 
   const current = banners[index];
-  const content = (
-    <>
-      <img
-        src={resolveMediaUrl(current.imageUrl)}
-        alt={current.title || "Banner da loja"}
-        className="h-full w-full object-cover"
-        draggable={false}
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent sm:bg-gradient-to-r sm:from-black/65 sm:via-black/30 sm:to-transparent" />
-      <div className="absolute inset-0 flex items-end">
-        <div className="mx-auto w-full max-w-7xl px-4 pb-7 pt-6 sm:px-6 sm:pb-8">
-          {(current.title || fallbackTitle) && (
-            <h1 className="font-display max-w-2xl text-lg font-bold tracking-tight text-white sm:text-2xl md:text-3xl">
-              {current.title || fallbackTitle}
-            </h1>
-          )}
-          {(current.subtitle || fallbackSubtitle) && (
-            <p className="mt-1 max-w-xl text-xs leading-snug text-white/85 sm:text-sm md:text-base">
-              {current.subtitle || fallbackSubtitle}
-            </p>
-          )}
-        </div>
-      </div>
-    </>
+  const image = (
+    <img
+      src={resolveMediaUrl(current.imageUrl)}
+      alt={current.title || "Banner da loja"}
+      className="h-full w-full object-cover"
+      draggable={false}
+    />
   );
 
   return (
@@ -98,10 +61,10 @@ export function StoreBannerCarousel({
             target={current.linkUrl.startsWith("http") ? "_blank" : undefined}
             rel="noreferrer"
           >
-            {content}
+            {image}
           </a>
         ) : (
-          <div className="absolute inset-0">{content}</div>
+          <div className="absolute inset-0">{image}</div>
         )}
 
         {banners.length > 1 && (
