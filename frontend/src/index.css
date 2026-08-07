@@ -277,6 +277,50 @@
     padding-top: max(0px, env(safe-area-inset-top));
   }
 
+  /* Silhueta do botão: cantos cortados na diagonal (chanfro), no lugar do
+     retângulo arredondado padrão. Mesma linguagem angular dos ícones. */
+  .btn-shape {
+    clip-path: polygon(
+      0 0,
+      calc(100% - 0.6rem) 0,
+      100% 0.6rem,
+      100% 100%,
+      0.6rem 100%,
+      0 calc(100% - 0.6rem)
+    );
+  }
+
+  /* Aresta 3D: faixa escura na base do botão (dentro do recorte, já que
+     clip-path corta box-shadow). No clique o botão desce e a aresta some. */
+  .btn-3d {
+    background-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(100% - 4px),
+      rgb(0 0 0 / 0.3) calc(100% - 4px),
+      rgb(0 0 0 / 0.3) 100%
+    );
+    transition:
+      transform 0.1s ease-out,
+      background-image 0.1s ease-out,
+      filter 0.1s ease-out;
+  }
+
+  .btn-3d-soft {
+    background-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(100% - 4px),
+      rgb(0 0 0 / 0.14) calc(100% - 4px),
+      rgb(0 0 0 / 0.14) 100%
+    );
+  }
+
+  .btn-3d:active:not(:disabled) {
+    transform: translateY(3px);
+    background-image: linear-gradient(to bottom, transparent 0, transparent 100%);
+  }
+
   .bg-grid-pattern {
     background-image:
       linear-gradient(hsl(var(--foreground) / 0.05) 1px, transparent 1px),

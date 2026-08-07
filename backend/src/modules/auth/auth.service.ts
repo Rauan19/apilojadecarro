@@ -222,17 +222,6 @@ export class AuthService {
     return bcrypt.compare(password, hash);
   }
 
-  toAuthenticatedUser(user: User): AuthenticatedUser {
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      companyId: user.companyId,
-      active: user.active,
-    };
-  }
-
   private async findValidResetToken(token: string) {
     const record = await this.prisma.passwordResetToken.findUnique({
       where: { token },
@@ -258,8 +247,14 @@ export class AuthService {
     }
 
     if (user.companyId) {
-      if (!user.company || user.company.status !== CompanyStatus.ACTIVE) {
-        throw new UnauthorizedException('Empresa inativa ou bloqueada');
+      if (!user.company) {
+        throw new UnauthorizedException('Empresa não encontrada');
+      }
+
+      // Loja bloqueada por inadimplência ainda entra: o painel mostra a tela
+      // de renovação com o PIX. Quem barra o resto é o SubscriptionGuard.
+      if (user.company.status === CompanyStatus.INACTIVE) {
+        throw new UnauthorizedException('Empresa inativa');
       }
     }
   }

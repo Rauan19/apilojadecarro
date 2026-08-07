@@ -4,8 +4,10 @@ import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  Bot,
   Check,
   Copy,
+  CreditCard,
   ExternalLink,
   Globe,
   ImagePlus,
@@ -13,6 +15,7 @@ import {
   Palette,
   Save,
   Share2,
+  Smartphone,
   Store,
   Trash2,
   Upload,
@@ -20,21 +23,28 @@ import {
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CardSkeleton } from "@/components/shared/LoadingPage";
 import { settingsService } from "@/services/settings.service";
 import { uploadsService } from "@/services/uploads.service";
+import { whatsappService } from "@/services/whatsapp.service";
 import { getApiErrorMessage } from "@/services/api";
 import { useCompany } from "@/hooks/useCompany";
 import { buildBrandThemeStyle, normalizeHexColor } from "@/utils/color";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { MAX_STORE_BANNERS, parseStoreBanners, type StoreBanner } from "@/utils/storeBanners";
+import { isValidCnpj, isValidCpf, maskDocument, onlyDigits } from "@/lib/masks";
+import { SubscriptionTab } from "./SubscriptionTab";
 
 interface FormValues {
   name: string;
+  document: string;
   email: string;
   phone: string;
   address: string;
@@ -51,6 +61,8 @@ interface FormValues {
   youtube: string;
   tiktok: string;
   businessHours: string;
+  businessHoursStart: string;
+  businessHoursEnd: string;
 }
 
 function getStorePublicUrl(slug: string, customDomain?: string | null) {
@@ -78,13 +90,56 @@ export function SettingsPage() {
     queryFn: () => settingsService.get(companyId),
   });
 
+  const { data: whatsappStatus } = useQuery({
+    queryKey: ["whatsapp-status", companyId],
+    queryFn: () => whatsappService.getStatus(companyId),
+    enabled: tab === "whatsapp",
+    refetchInterval: (query) => (query.state.data?.connected ? false : 3000),
+  });
+
+  const whatsappConnectMutation = useMutation({
+    mutationFn: () => whatsappService.connect(companyId),
+    onSuccess: (result) => {
+      queryClient.setQueryData(["whatsapp-status", companyId], result);
+      if (!result.qrcode) {
+        toast.error("Não recebi o QR Code da Evolution API. Tente novamente.");
+      }
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
+  const whatsappDisconnectMutation = useMutation({
+    mutationFn: () => whatsappService.disconnect(companyId),
+    onSuccess: (result) => {
+      queryClient.setQueryData(["whatsapp-status", companyId], result);
+      toast.success("WhatsApp desconectado");
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
+  const whatsappBotToggleMutation = useMutation({
+    mutationFn: (enabled: boolean) => whatsappService.setBotEnabled(enabled, companyId),
+    onSuccess: (result) => {
+      queryClient.setQueryData(["whatsapp-status", companyId], result);
+      toast.success(result.botEnabled ? "Bot ativado" : "Bot desativado");
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
   const { register, handleSubmit, reset, watch, setValue } = useForm<FormValues>({
     defaultValues: { primaryColor: "#e10600" },
   });
 
   const primaryColor = watch("primaryColor");
   const customDomain = watch("customDomain");
+  const documentValue = watch("document");
   const brandPreview = buildBrandThemeStyle(primaryColor);
+
+  // Avisa enquanto digita, mas só depois que o número tem tamanho de CPF/CNPJ.
+  const documentDigits = onlyDigits(documentValue ?? "");
+  const documentInvalid =
+    (documentDigits.length === 11 && !isValidCpf(documentDigits)) ||
+    (documentDigits.length === 14 && !isValidCnpj(documentDigits));
 
   React.useEffect(() => {
     if (data) {
@@ -92,6 +147,7 @@ export function SettingsPage() {
       const theme = settings.theme ?? {};
       reset({
         name: data.name ?? "",
+        document: data.document ?? "",
         email: data.email ?? "",
         phone: data.phone ?? "",
         address: data.address ?? "",
@@ -108,6 +164,8 @@ export function SettingsPage() {
         youtube: settings.social?.youtube ?? "",
         tiktok: settings.social?.tiktok ?? "",
         businessHours: settings.businessHours ?? "",
+        businessHoursStart: settings.businessHoursStart ?? "08:00",
+        businessHoursEnd: settings.businessHoursEnd ?? "18:00",
       });
       setLogoPreview(resolveMediaUrl(data.logo) ?? data.logo);
       setLogoPath(data.logo);
@@ -170,6 +228,8 @@ export function SettingsPage() {
           tiktok: values.tiktok,
         },
         businessHours: values.businessHours,
+        businessHoursStart: values.businessHoursStart,
+        businessHoursEnd: values.businessHoursEnd,
         theme: {
           primaryColor: normalizeHexColor(values.primaryColor) || "#e10600",
         },
@@ -185,6 +245,7 @@ export function SettingsPage() {
       return settingsService.update(
         {
           name: values.name,
+          document: values.document.trim(),
           email: values.email,
           phone: values.phone,
           address: values.address,
@@ -302,6 +363,15 @@ export function SettingsPage() {
               <TabsTrigger value="dominio" className="shrink-0 gap-1.5">
                 <Globe className="h-3.5 w-3.5" /> Domínio
               </TabsTrigger>
+              <TabsTrigger value="assinatura" className="shrink-0 gap-1.5">
+                <CreditCard className="h-3.5 w-3.5" /> Assinatura
+              </TabsTrigger>
+              <TabsTrigger
+                value="whatsapp"
+                className="shrink-0 gap-1.5 bg-[#25D366] text-white hover:bg-[#1fb958] hover:text-white data-[state=active]:bg-[#1fb958] data-[state=active]:text-white"
+              >
+                <Smartphone className="h-3.5 w-3.5" /> Conectar WhatsApp Bot Atendimento
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -315,6 +385,26 @@ export function SettingsPage() {
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="name">Nome</Label>
                   <Input id="name" {...register("name")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="document">CPF ou CNPJ</Label>
+                  <MaskedInput
+                    id="document"
+                    inputMode="numeric"
+                    placeholder="00.000.000/0000-00"
+                    value={documentValue ?? ""}
+                    mask={maskDocument}
+                    onValueChange={(value) =>
+                      setValue("document", value, { shouldDirty: true })
+                    }
+                  />
+                  <p
+                    className={`text-xs ${documentInvalid ? "text-destructive" : "text-muted-foreground"}`}
+                  >
+                    {documentInvalid
+                      ? "Documento inválido — confira os números."
+                      : "Necessário para assinar um plano e emitir o PIX."}
+                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="email">E-mail</Label>
@@ -458,8 +548,41 @@ export function SettingsPage() {
                   <Input id="whatsapp" {...register("whatsapp")} placeholder="5511999998888" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="businessHours">Horário de funcionamento</Label>
+                  <Label htmlFor="businessHours">Horário de funcionamento (texto)</Label>
                   <Input id="businessHours" {...register("businessHours")} placeholder="Seg a Sex 9h–18h | Sáb 9h–13h" />
+                  <p className="text-xs text-muted-foreground">Aparece na vitrine pro cliente ler.</p>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Horário de atendimento do bot de WhatsApp *</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Obrigatório: usado pelo bot pra saber quando avisar o cliente que a loja está fechada.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="businessHoursStart" className="text-xs font-normal text-muted-foreground">
+                        Abre às
+                      </Label>
+                      <Input
+                        id="businessHoursStart"
+                        type="time"
+                        required
+                        {...register("businessHoursStart", { required: true })}
+                        className="w-32"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="businessHoursEnd" className="text-xs font-normal text-muted-foreground">
+                        Fecha às
+                      </Label>
+                      <Input
+                        id="businessHoursEnd"
+                        type="time"
+                        required
+                        {...register("businessHoursEnd", { required: true })}
+                        className="w-32"
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="instagram">Instagram</Label>
@@ -617,13 +740,112 @@ export function SettingsPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="assinatura" className="mt-0">
+            <SubscriptionTab companyId={companyId} />
+          </TabsContent>
+
+          <TabsContent value="whatsapp" className="mt-0">
+            <Card>
+              <CardHeader>
+                <CardTitle>Bot de WhatsApp</CardTitle>
+                <CardDescription>
+                  Conecte o número da loja e deixe o bot responder clientes com o estoque de veículos, fotos e captura de leads.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Smartphone className="h-4 w-4 text-muted-foreground" />
+                    Status da conexão
+                  </div>
+                  <Badge
+                    variant={
+                      whatsappStatus?.connected
+                        ? "success"
+                        : whatsappStatus?.status === "connecting"
+                          ? "warning"
+                          : "secondary"
+                    }
+                  >
+                    {whatsappStatus?.connected
+                      ? "Conectado"
+                      : whatsappStatus?.status === "connecting"
+                        ? "Conectando"
+                        : "Desconectado"}
+                  </Badge>
+                </div>
+
+                {!whatsappStatus?.connected && whatsappStatus?.qrcode && (
+                  <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border p-4">
+                    <img
+                      src={
+                        whatsappStatus.qrcode.startsWith("data:")
+                          ? whatsappStatus.qrcode
+                          : `data:image/png;base64,${whatsappStatus.qrcode}`
+                      }
+                      alt="QR Code do WhatsApp"
+                      className="h-56 w-56 rounded-md border border-border"
+                    />
+                    <p className="text-center text-xs text-muted-foreground">
+                      Abra o WhatsApp no celular da loja → Aparelhos conectados → Conectar aparelho, e escaneie o código.
+                    </p>
+                  </div>
+                )}
+
+                {whatsappStatus?.connected && (
+                  <>
+                    <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Bot className="h-4 w-4 text-muted-foreground" />
+                        Bot de veículos ativo
+                      </div>
+                      <Switch
+                        checked={whatsappStatus.botEnabled}
+                        disabled={whatsappBotToggleMutation.isPending}
+                        onCheckedChange={(checked) => whatsappBotToggleMutation.mutate(checked)}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Com o bot ativo, quem mandar mensagem recebe um menu para ver o estoque, buscar por marca e falar com um vendedor — com fotos dos veículos e criação automática de lead.
+                    </p>
+                  </>
+                )}
+
+                <div className="flex flex-col gap-2 pt-1 sm:flex-row">
+                  {whatsappStatus?.connected ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="text-destructive"
+                      loading={whatsappDisconnectMutation.isPending}
+                      onClick={() => whatsappDisconnectMutation.mutate()}
+                    >
+                      Desconectar
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      loading={whatsappConnectMutation.isPending}
+                      onClick={() => whatsappConnectMutation.mutate()}
+                    >
+                      {whatsappStatus?.qrcode ? "Gerar novo QR Code" : "Conectar"}
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
 
-        <div className="sticky bottom-0 z-10 mt-6 flex justify-end border-t border-border bg-background/95 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-          <Button type="submit" className="h-11 w-full font-bold sm:w-auto" loading={mutation.isPending}>
-            <Save /> Salvar configurações
-          </Button>
-        </div>
+        {/* A aba Assinatura não edita configurações — salvar ali não faz sentido. */}
+        {tab !== "assinatura" && (
+          <div className="sticky bottom-0 z-10 mt-6 flex justify-end border-t border-border bg-background/95 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+            <Button type="submit" className="h-11 w-full font-bold sm:w-auto" loading={mutation.isPending}>
+              <Save /> Salvar configurações
+            </Button>
+          </div>
+        )}
       </form>
     </div>
   );

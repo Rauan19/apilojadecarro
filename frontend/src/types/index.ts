@@ -4,6 +4,8 @@ export type CompanyStatus = "ACTIVE" | "BLOCKED" | "INACTIVE";
 
 export type VehicleStatus = "AVAILABLE" | "RESERVED" | "SOLD" | "MAINTENANCE";
 
+export type VehicleType = "CAR" | "MOTORCYCLE" | "TRUCK";
+
 export type FuelType =
   | "FLEX"
   | "GASOLINE"
@@ -57,6 +59,10 @@ export interface PaginationParams {
   companyId?: string;
 }
 
+export interface VehiclesListParams extends PaginationParams {
+  type?: VehicleType;
+}
+
 export interface UsersListParams extends PaginationParams {
   role?: Role;
   active?: boolean;
@@ -77,6 +83,8 @@ export interface SubscriptionPlan {
   maxUsers: number | null;
   active: boolean;
   sortOrder: number;
+  /** null = plano público; preenchido = plano exclusivo daquela loja. */
+  companyId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -182,6 +190,7 @@ export interface Vehicle {
   id: string;
   companyId: string;
   createdById: string | null;
+  type: VehicleType;
   brand: string;
   model: string;
   version: string | null;
@@ -315,6 +324,8 @@ export interface CompanySettings {
   id: string;
   name: string;
   slug: string;
+  /** CPF ou CNPJ da loja — exigido para assinar um plano. */
+  document: string | null;
   phone: string | null;
   email: string;
   address: string | null;
@@ -455,6 +466,7 @@ export type UpdateUserPayload = Partial<Omit<CreateUserPayload, "password">> & {
 };
 
 export interface CreateVehiclePayload {
+  type?: VehicleType;
   brand: string;
   model: string;
   version?: string;
@@ -532,6 +544,7 @@ export type UpdateProposalPayload = Partial<CreateProposalPayload>;
 
 export interface UpdateSettingsPayload {
   name?: string;
+  document?: string;
   phone?: string;
   email?: string;
   address?: string;
@@ -568,6 +581,7 @@ export interface PublicVehicleFilters {
   page?: number;
   limit?: number;
   search?: string;
+  type?: VehicleType;
   brand?: string;
   model?: string;
   year?: number;

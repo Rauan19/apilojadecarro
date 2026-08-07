@@ -6,12 +6,14 @@ import {
 } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import configuration from './config/configuration';
 import { ApiTokenMiddleware } from './common/middleware/api-token.middleware';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { SubscriptionGuard } from './common/guards/subscription.guard';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CompaniesModule } from './modules/companies/companies.module';
@@ -29,6 +31,8 @@ import { LogsModule } from './modules/logs/logs.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { PlansModule } from './modules/plans/plans.module';
+import { BillingModule } from './modules/billing/billing.module';
+import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -40,9 +44,24 @@ import { PlansModule } from './modules/plans/plans.module';
       pinoHttp: {
         transport:
           process.env.NODE_ENV !== 'production'
-            ? { target: 'pino-pretty', options: { singleLine: true } }
+            ? {
+                target: 'pino-pretty',
+                options: { singleLine: true, colorize: true, translateTime: 'HH:MM:ss' },
+              }
             : undefined,
-        autoLogging: true,
+        // sem isso, cada requisição loga um JSON gigante com todos os headers
+        // (é o que lotava o terminal de log em toda chamada do webhook)
+        serializers: {
+          req: (req: { method: string; url: string }) => ({
+            method: req.method,
+            url: req.url,
+          }),
+          res: (res: { statusCode: number }) => ({ statusCode: res.statusCode }),
+        },
+        // não loga o polling de status do WhatsApp (frontend bate nisso a cada poucos segundos)
+        autoLogging: {
+          ignore: (req: { url?: string }) => req.url === '/api/whatsapp/status',
+        },
       },
     }),
     ThrottlerModule.forRoot([
@@ -51,10 +70,12 @@ import { PlansModule } from './modules/plans/plans.module';
         limit: Number(process.env.THROTTLE_LIMIT ?? 100),
       },
     ]),
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     CompaniesModule,
     PlansModule,
+    BillingModule,
     UsersModule,
     VehiclesModule,
     CustomersModule,
@@ -68,10 +89,13 @@ import { PlansModule } from './modules/plans/plans.module';
     LogsModule,
     SettingsModule,
     UploadsModule,
+    WhatsappModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    // Depois do JwtAuthGuard: precisa do usuário já resolvido na request.
+    { provide: APP_GUARD, useClass: SubscriptionGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })

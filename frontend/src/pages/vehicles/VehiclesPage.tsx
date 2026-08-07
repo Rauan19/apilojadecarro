@@ -9,6 +9,7 @@ import { Pagination } from "@/components/shared/Pagination";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,10 +23,16 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useAuth } from "@/hooks/useAuth";
 import { useCompany } from "@/hooks/useCompany";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import { fuelLabels, transmissionLabels, vehicleStatusLabels, vehicleStatusVariant } from "@/utils/labels";
+import {
+  fuelLabels,
+  transmissionLabels,
+  vehicleStatusLabels,
+  vehicleStatusVariant,
+  vehicleTypeLabels,
+} from "@/utils/labels";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { VehicleFormDialog } from "./VehicleFormDialog";
-import type { Vehicle } from "@/types";
+import type { Vehicle, VehicleType } from "@/types";
 
 export function VehiclesPage() {
   const { user } = useAuth();
@@ -33,6 +40,7 @@ export function VehiclesPage() {
   const canManage = user?.role === "SUPER_ADMIN" || user?.role === "STORE_ADMIN";
 
   const [search, setSearch] = React.useState("");
+  const [type, setType] = React.useState<VehicleType | "all">("all");
   const [page, setPage] = React.useState(1);
   const debouncedSearch = useDebounce(search);
   const [formOpen, setFormOpen] = React.useState(false);
@@ -41,8 +49,15 @@ export function VehiclesPage() {
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["vehicles", { page, search: debouncedSearch, companyId }],
-    queryFn: () => vehiclesService.list({ page, limit: 10, search: debouncedSearch, companyId }),
+    queryKey: ["vehicles", { page, search: debouncedSearch, type, companyId }],
+    queryFn: () =>
+      vehiclesService.list({
+        page,
+        limit: 10,
+        search: debouncedSearch,
+        type: type === "all" ? undefined : type,
+        companyId,
+      }),
   });
 
   const removeMutation = useMutation({
@@ -69,9 +84,14 @@ export function VehiclesPage() {
             )}
           </div>
           <div>
-            <p className="font-medium text-foreground">
-              {row.brand} {row.model}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="font-medium text-foreground">
+                {row.brand} {row.model}
+              </p>
+              <Badge variant="outline" className="shrink-0 text-[10px]">
+                {vehicleTypeLabels[row.type]}
+              </Badge>
+            </div>
             <p className="text-xs text-muted-foreground">{row.version || `${row.year}/${row.yearModel}`}</p>
           </div>
         </div>
@@ -182,7 +202,7 @@ export function VehiclesPage() {
         }
       />
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <SearchInput
           value={search}
           onChange={(v) => {
@@ -191,6 +211,25 @@ export function VehiclesPage() {
           }}
           placeholder="Buscar por marca, modelo, placa ou cor..."
         />
+        <Select
+          value={type}
+          onValueChange={(v) => {
+            setType(v as VehicleType | "all");
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue placeholder="Tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os tipos</SelectItem>
+            {Object.entries(vehicleTypeLabels).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <DataTable

@@ -12,6 +12,15 @@ export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
 export const ROLES_KEY = 'roles';
 export const Roles = (...roles: Role[]) => SetMetadata(ROLES_KEY, roles);
 
+export const ALLOW_WHEN_BLOCKED_KEY = 'allowWhenBlocked';
+/**
+ * Libera a rota para empresa bloqueada por inadimplência. Use só no que a
+ * loja precisa para voltar a pagar (assinatura, faturas, dados da empresa) —
+ * o resto do sistema deve continuar barrado com 402.
+ */
+export const AllowWhenBlocked = () =>
+  SetMetadata(ALLOW_WHEN_BLOCKED_KEY, true);
+
 export const CurrentUser = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): AuthenticatedUser => {
     const request = ctx.switchToHttp().getRequest();

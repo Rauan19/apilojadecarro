@@ -1,4 +1,4 @@
-import { Role } from '@prisma/client';
+import { CompanyStatus, Role } from '@prisma/client';
 
 export interface JwtPayload {
   sub: string;
@@ -14,6 +14,8 @@ export interface AuthenticatedUser {
   role: Role;
   companyId: string | null;
   active: boolean;
+  /** Null para Super Admin sem empresa. Usado pelo SubscriptionGuard. */
+  companyStatus: CompanyStatus | null;
 }
 
 export interface RequestCompanyContext {

@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import helmet from 'helmet';
+import { json, urlencoded } from 'express';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { AppModule } from './app.module';
@@ -15,7 +16,13 @@ import { PrismaService } from './prisma/prisma.service';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
+    bodyParser: false,
   });
+
+  // Limite maior que o padrão (100kb): webhooks da Evolution API podem vir com
+  // mídia embutida em base64 e passam facilmente do limite padrão do Express.
+  app.use(json({ limit: '20mb' }));
+  app.use(urlencoded({ extended: true, limit: '20mb' }));
 
   const config = app.get(ConfigService);
   const prisma = app.get(PrismaService);
@@ -127,7 +134,9 @@ async function bootstrap(): Promise<void> {
     .addTag('Schedules', 'Agendamentos')
     .addTag('Logs', 'Logs de API (Super Admin)')
     .addTag('Settings', 'Configurações da loja')
+    .addTag('Billing', 'Assinatura do sistema paga pela loja (PIX Mercado Pago)')
     .addTag('Uploads', 'Upload de arquivos')
+    .addTag('WhatsApp', 'Bot de WhatsApp (conexão via Evolution API)')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);

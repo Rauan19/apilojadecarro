@@ -26,6 +26,12 @@ enum VehicleStatus {
   MAINTENANCE
 }
 
+enum VehicleType {
+  CAR
+  MOTORCYCLE
+  TRUCK
+}
+
 enum FuelType {
   FLEX
   GASOLINE
@@ -71,36 +77,145 @@ enum ScheduleStatus {
   COMPLETED
 }
 
+enum SubscriptionStatus {
+  /// Assinatura criada, aguardando o primeiro pagamento ser confirmado.
+  PENDING
+  ACTIVE
+  /// Venceu e ainda não pagou: dentro do período de carência.
+  PAST_DUE
+  CANCELED
+}
+
+enum PaymentMethod {
+  PIX
+  CARD
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  /// QR Code venceu sem pagamento.
+  EXPIRED
+  CANCELED
+  REFUNDED
+}
+
 model SubscriptionPlan {
-  id           String    @id @default(uuid())
+  id           String   @id @default(uuid())
   name         String
-  slug         String    @unique
+  slug         String   @unique
   description  String?
-  priceMonthly Float     @default(0)
-  features     String    @default("[]") // JSON string[]
+  priceMonthly Float    @default(0)
+  features     String   @default("[]") // JSON string[]
   maxVehicles  Int?
   maxUsers     Int?
-  active       Boolean   @default(true)
-  sortOrder    Int       @default(0)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  active       Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  /// Null = plano público (toda loja vê). Preenchido = plano exclusivo dessa
+  /// loja, para preço negociado — só ela enxerga e pode assinar.
+  companyId    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  companies Company[]
+  exclusiveTo   Company?       @relation("ExclusivePlans", fields: [companyId], references: [id], onDelete: Cascade)
+  companies     Company[]      @relation("CompanyPlan")
+  subscriptions Subscription[]
 
+  @@index([companyId])
   @@map("subscription_plans")
 }
 
+/// Assinatura do sistema EstoqueAuto que a loja paga (uma por empresa).
+model Subscription {
+  id        String             @id @default(uuid())
+  companyId String             @unique
+  planId    String
+  status    SubscriptionStatus @default(PENDING)
+  method    PaymentMethod      @default(PIX)
+
+  /// Início e fim do ciclo já pago. Nulos enquanto o 1º pagamento não confirma.
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  /// Quando o cron deve emitir a cobrança do próximo ciclo.
+  nextChargeAt       DateTime?
+  /// Até quando a loja continua liberada mesmo vencida.
+  graceUntil         DateTime?
+  canceledAt         DateTime?
+
+  /// A empresa foi bloqueada por inadimplência (e não manualmente pelo
+  /// Super Admin). Só quem bloqueou pode desbloquear no pagamento.
+  blockedByBilling Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company  Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan     SubscriptionPlan @relation(fields: [planId], references: [id])
+  invoices Invoice[]
+
+  @@index([status])
+  @@index([nextChargeAt])
+  @@map("subscriptions")
+}
+
+/// Cobrança de um ciclo da assinatura.
+model Invoice {
+  id             String        @id @default(uuid())
+  subscriptionId String
+  companyId      String
+  amount         Float
+  status         InvoiceStatus @default(PENDING)
+  dueDate        DateTime
+  /// Ciclo que esta fatura libera quando paga.
+  periodStart    DateTime
+  periodEnd      DateTime
+
+  /// Dados do Mercado Pago.
+  providerPaymentId String?   @unique
+  pixQrCode         String? // copia e cola
+  pixQrCodeBase64   String? // imagem do QR
+  pixTicketUrl      String?
+  pixExpiresAt      DateTime?
+
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([periodStart, periodEnd])
+  @@map("invoices")
+}
+
+/// Notificações já processadas do provedor, para não creditar duas vezes
+/// quando o Mercado Pago reenvia o mesmo evento.
+model WebhookEvent {
+  id              String   @id @default(uuid())
+  provider        String   @default("MERCADO_PAGO")
+  providerEventId String
+  type            String?
+  payload         String? // JSON bruto recebido
+  processedAt     DateTime @default(now())
+
+  @@unique([provider, providerEventId])
+  @@map("webhook_events")
+}
+
 model Company {
-  id        String        @id @default(uuid())
-  name      String
-  slug      String        @unique
-  document  String?
-  email     String
-  phone     String?
-  address   String?
-  city      String?
-  state     String?
-  zipCode   String?
+  id           String        @id @default(uuid())
+  name         String
+  slug         String        @unique
+  document     String?
+  email        String
+  phone        String?
+  address      String?
+  city         String?
+  state        String?
+  zipCode      String?
   logo         String?
   website      String?
   customDomain String?       @unique
@@ -110,16 +225,19 @@ model Company {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
-  plan       SubscriptionPlan? @relation(fields: [planId], references: [id])
-  users      User[]
-  vehicles   Vehicle[]
-  customers  Customer[]
-  leads      Lead[]
-  proposals  Proposal[]
-  schedules  Schedule[]
-  apiTokens  ApiToken[]
-  apiLogs    ApiLog[]
-  sellers    Seller[]
+  plan           SubscriptionPlan?  @relation("CompanyPlan", fields: [planId], references: [id])
+  exclusivePlans SubscriptionPlan[] @relation("ExclusivePlans")
+  users          User[]
+  vehicles       Vehicle[]
+  customers      Customer[]
+  leads          Lead[]
+  proposals      Proposal[]
+  schedules      Schedule[]
+  apiTokens      ApiToken[]
+  apiLogs        ApiLog[]
+  sellers        Seller[]
+  subscription   Subscription?
+  invoices       Invoice[]
 
   @@map("companies")
 }
@@ -137,14 +255,14 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  company        Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  refreshTokens  RefreshToken[]
+  company             Company?             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
-  seller         Seller?
-  customers      Customer[]     @relation("SellerCustomers")
-  leads          Lead[]         @relation("SellerLeads")
-  proposals      Proposal[]     @relation("SellerProposals")
-  createdVehicles Vehicle[]     @relation("VehicleCreator")
+  seller              Seller?
+  customers           Customer[]           @relation("SellerCustomers")
+  leads               Lead[]               @relation("SellerLeads")
+  proposals           Proposal[]           @relation("SellerProposals")
+  createdVehicles     Vehicle[]            @relation("VehicleCreator")
 
   @@index([companyId])
   @@index([email])
@@ -181,14 +299,14 @@ model PasswordResetToken {
 }
 
 model Seller {
-  id        String   @id @default(uuid())
-  companyId String
-  userId    String   @unique
-  commission Float?  @default(0)
-  notes     String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(uuid())
+  companyId  String
+  userId     String   @unique
+  commission Float?   @default(0)
+  notes      String?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -198,31 +316,32 @@ model Seller {
 }
 
 model Vehicle {
-  id           String        @id @default(uuid())
-  companyId    String
-  createdById  String?
-  brand        String
-  model        String
-  version      String?
-  year         Int
-  yearModel    Int
-  price        Float
-  originalPrice Float?       // preço "de" (riscado); se > price, mostra % de desconto
-  purchasePrice Float?       // valor pago na compra do veículo (custo interno)
-  soldPrice     Float?       // valor efetivo da venda (quando status = SOLD)
-  mileage      Int           @default(0)
-  plate        String?
-  renavam      String?
-  fuel         FuelType      @default(FLEX)
-  transmission Transmission  @default(MANUAL)
-  color        String?
-  doors        Int           @default(4)
-  description  String?
-  optionals    String? // JSON array as string
-  status       VehicleStatus @default(AVAILABLE)
-  notes        String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id            String        @id @default(uuid())
+  companyId     String
+  createdById   String?
+  type          VehicleType   @default(CAR)
+  brand         String
+  model         String
+  version       String?
+  year          Int
+  yearModel     Int
+  price         Float
+  originalPrice Float? // preço "de" (riscado); se > price, mostra % de desconto
+  purchasePrice Float? // valor pago na compra do veículo (custo interno)
+  soldPrice     Float? // valor efetivo da venda (quando status = SOLD)
+  mileage       Int           @default(0)
+  plate         String?
+  renavam       String?
+  fuel          FuelType      @default(FLEX)
+  transmission  Transmission  @default(MANUAL)
+  color         String?
+  doors         Int           @default(4)
+  description   String?
+  optionals     String? // JSON array as string
+  status        VehicleStatus @default(AVAILABLE)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   company   Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdBy User?          @relation("VehicleCreator", fields: [createdById], references: [id], onDelete: SetNull)
@@ -233,6 +352,7 @@ model Vehicle {
 
   @@index([companyId])
   @@index([status])
+  @@index([type])
   @@index([brand, model])
   @@map("vehicles")
 }

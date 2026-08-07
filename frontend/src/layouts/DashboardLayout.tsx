@@ -5,12 +5,15 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useCompany } from "@/hooks/useCompany";
 import { buildBrandThemeStyle } from "@/utils/color";
+import { SubscriptionBlocker } from "@/components/layout/SubscriptionBlocker";
+import { useSubscriptionBlocked } from "@/hooks/useSubscriptionBlocked";
 
 export function DashboardLayout() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const location = useLocation();
-  const { isSuperAdmin, primaryColor } = useCompany();
+  const { isSuperAdmin, primaryColor, companyId } = useCompany();
   const brandStyle = !isSuperAdmin ? buildBrandThemeStyle(primaryColor) : undefined;
+  const blocked = useSubscriptionBlocked();
 
   React.useEffect(() => {
     setMobileOpen(false);
@@ -43,6 +46,8 @@ export function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+
+      {blocked && <SubscriptionBlocker companyId={companyId} />}
     </div>
   );
 }

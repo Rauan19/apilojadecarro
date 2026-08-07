@@ -8,6 +8,7 @@ import type {
   ScheduleStatus,
   Transmission,
   VehicleStatus,
+  VehicleType,
 } from "@/types";
 
 export const roleLabels: Record<Role, string> = {
@@ -40,6 +41,12 @@ export const vehicleStatusVariant: Record<VehicleStatus, "success" | "warning" |
   RESERVED: "warning",
   SOLD: "secondary",
   MAINTENANCE: "destructive",
+};
+
+export const vehicleTypeLabels: Record<VehicleType, string> = {
+  CAR: "Carro",
+  MOTORCYCLE: "Moto",
+  TRUCK: "Caminhão",
 };
 
 export const fuelLabels: Record<FuelType, string> = {

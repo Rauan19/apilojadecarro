@@ -125,7 +125,7 @@ export function LoginPage() {
 
             <Button
               type="submit"
-              className="h-11 w-full rounded-none text-sm font-semibold tracking-wide shadow-none"
+              className="h-11 w-full text-sm font-semibold tracking-wide"
               loading={isSubmitting}
             >
               Entrar

@@ -32,6 +32,7 @@ export class PublicApiService {
 
   private readonly publicVehicleSelect = {
     id: true,
+    type: true,
     brand: true,
     model: true,
     version: true,
@@ -248,12 +249,16 @@ export class PublicApiService {
       status: VehicleStatus.AVAILABLE,
     };
 
+    if (filters.type) {
+      where.type = filters.type;
+    }
+
     if (filters.brand) {
-      where.brand = { contains: filters.brand };
+      where.brand = { contains: filters.brand, mode: 'insensitive' };
     }
 
     if (filters.model) {
-      where.model = { contains: filters.model };
+      where.model = { contains: filters.model, mode: 'insensitive' };
     }
 
     if (filters.year) {
@@ -279,16 +284,16 @@ export class PublicApiService {
     }
 
     if (filters.color) {
-      where.color = { contains: filters.color };
+      where.color = { contains: filters.color, mode: 'insensitive' };
     }
 
     if (filters.search?.trim()) {
       const term = filters.search.trim();
       where.OR = [
-        { brand: { contains: term } },
-        { model: { contains: term } },
-        { version: { contains: term } },
-        { description: { contains: term } },
+        { brand: { contains: term, mode: 'insensitive' } },
+        { model: { contains: term, mode: 'insensitive' } },
+        { version: { contains: term, mode: 'insensitive' } },
+        { description: { contains: term, mode: 'insensitive' } },
       ];
     }
 

@@ -103,7 +103,7 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
         }}
         style={{ position: "fixed", top: pos?.top ?? -9999, left: pos?.left ?? -9999 }}
         className={cn(
-          "z-50 min-w-[10rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-fade-in",
+          "z-50 min-w-[10rem] overflow-hidden border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-fade-in",
           className
         )}
         {...props}
@@ -135,7 +135,7 @@ const DropdownMenuItem = React.forwardRef<HTMLDivElement, DropdownMenuItemProps>
           ctx.setOpen(false);
         }}
         className={cn(
-          "relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-secondary focus:bg-secondary [&_svg]:size-4 [&_svg]:shrink-0",
+          "relative flex cursor-pointer select-none items-center gap-2 px-2 py-1.5 text-sm outline-none transition-colors hover:bg-secondary focus:bg-secondary [&_svg]:size-4 [&_svg]:shrink-0",
           destructive && "text-destructive hover:bg-destructive/10 focus:bg-destructive/10",
           disabled && "pointer-events-none opacity-50",
           className

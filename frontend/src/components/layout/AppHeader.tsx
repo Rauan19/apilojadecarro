@@ -1,5 +1,10 @@
 import { useNavigate } from "react-router-dom";
-import { LogOut, Menu, Settings, UserCircle } from "lucide-react";
+import {
+  IconLogout,
+  IconMenuTicks,
+  IconProfile,
+  IconSettings,
+} from "@/components/icons/instrument-icons";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -36,7 +41,7 @@ export function AppHeader({ onMenuClick }: { onMenuClick: () => void }) {
           onClick={onMenuClick}
           aria-label="Abrir menu"
         >
-          <Menu className="h-5 w-5" />
+          <IconMenuTicks className="h-5 w-5" />
         </Button>
         <div className="min-w-0 lg:hidden">
           <BrandLogo preferStoreBrand showWordmark className="scale-90 origin-left" />
@@ -62,16 +67,16 @@ export function AppHeader({ onMenuClick }: { onMenuClick: () => void }) {
             <DropdownMenuLabel>Minha conta</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate("/perfil")}>
-              <UserCircle /> Meu perfil
+              <IconProfile className="h-4 w-4" /> Meu perfil
             </DropdownMenuItem>
             {user?.role === "STORE_ADMIN" && (
               <DropdownMenuItem onClick={() => navigate("/configuracoes")}>
-                <Settings /> Configurações
+                <IconSettings className="h-4 w-4" /> Configurações
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem destructive onClick={handleLogout}>
-              <LogOut /> Sair
+              <IconLogout className="h-4 w-4" /> Sair
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

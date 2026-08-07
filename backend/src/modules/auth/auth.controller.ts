@@ -14,7 +14,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { CurrentUser, Public } from '../../common/decorators';
+import { AllowWhenBlocked, CurrentUser, Public } from '../../common/decorators';
 import type { AuthenticatedUser } from '../../common/interfaces/auth.interface';
 import { AuthService } from './auth.service';
 import {
@@ -74,6 +74,7 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
+  @AllowWhenBlocked()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Encerrar sessão' })
@@ -87,6 +88,9 @@ export class AuthController {
   }
 
   @Get('me')
+  // Sessão precisa carregar mesmo com a loja bloqueada, senão o painel não
+  // consegue nem montar a tela de renovação.
+  @AllowWhenBlocked()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obter perfil do usuário autenticado' })

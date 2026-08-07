@@ -33,8 +33,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     if (user.companyId) {
-      if (!user.company || user.company.status !== CompanyStatus.ACTIVE) {
-        throw new UnauthorizedException('Empresa inativa ou bloqueada');
+      if (!user.company) {
+        throw new UnauthorizedException('Empresa não encontrada');
+      }
+
+      // BLOCKED (inadimplência) não derruba o login: senão a loja não
+      // consegue nem abrir a tela pra pagar e sair do bloqueio. Quem barra o
+      // acesso é o SubscriptionGuard, que devolve 402 e libera o billing.
+      if (user.company.status === CompanyStatus.INACTIVE) {
+        throw new UnauthorizedException('Empresa inativa');
       }
     }
 
@@ -45,6 +52,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       role: user.role,
       companyId: user.companyId,
       active: user.active,
+      companyStatus: user.company?.status ?? null,
     };
   }
 }

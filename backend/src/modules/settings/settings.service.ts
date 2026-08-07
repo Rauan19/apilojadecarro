@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Company, Role } from '@prisma/client';
 import { AuthenticatedUser } from '../../common/interfaces/auth.interface';
+import { isValidCpfOrCnpj } from '../../common/utils/document.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 
@@ -14,6 +15,7 @@ export interface CompanySettingsResponse {
   id: string;
   name: string;
   slug: string;
+  document: string | null;
   phone: string | null;
   email: string;
   address: string | null;
@@ -48,6 +50,16 @@ export class SettingsService {
     const existing = await this.findCompany(companyId);
 
     const data: Record<string, unknown> = { ...dto };
+
+    if (dto.document !== undefined) {
+      const document = dto.document.trim();
+      // Documento inválido só apareceria lá na frente, recusado pelo Mercado
+      // Pago na hora de assinar. Melhor barrar já no cadastro.
+      if (document && !isValidCpfOrCnpj(document)) {
+        throw new BadRequestException('CPF ou CNPJ inválido');
+      }
+      data.document = document || null;
+    }
 
     if (dto.customDomain !== undefined) {
       data.customDomain = this.normalizeDomain(dto.customDomain);
@@ -119,6 +131,7 @@ export class SettingsService {
       id: company.id,
       name: company.name,
       slug: company.slug,
+      document: company.document,
       phone: company.phone,
       email: company.email,
       address: company.address,

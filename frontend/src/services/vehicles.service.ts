@@ -3,14 +3,14 @@ import type {
   ApiResponse,
   CreateVehiclePayload,
   PaginatedResult,
-  PaginationParams,
   UpdateVehiclePayload,
   Vehicle,
   VehicleImage,
+  VehiclesListParams,
 } from "@/types";
 
 export const vehiclesService = {
-  async list(params: PaginationParams) {
+  async list(params: VehiclesListParams) {
     const { data } = await api.get<ApiResponse<PaginatedResult<Vehicle>>>("/vehicles", { params });
     return data.data as PaginatedResult<Vehicle>;
   },

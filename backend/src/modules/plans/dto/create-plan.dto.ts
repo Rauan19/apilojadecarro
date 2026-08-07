@@ -8,6 +8,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Min,
   MinLength,
 } from 'class-validator';
@@ -67,4 +68,14 @@ export class CreatePlanDto {
   @Type(() => Number)
   @IsInt()
   sortOrder?: number;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'Deixe vazio para plano público. Informe uma empresa para criar um ' +
+      'plano exclusivo dela (preço negociado): só essa loja vê e assina.',
+  })
+  @IsOptional()
+  @IsUUID()
+  companyId?: string | null;
 }

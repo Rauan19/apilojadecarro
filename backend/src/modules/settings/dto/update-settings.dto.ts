@@ -23,6 +23,14 @@ export class UpdateSettingsDto {
   @IsEmail()
   email?: string;
 
+  @ApiPropertyOptional({
+    example: '12.345.678/0001-95',
+    description: 'CPF ou CNPJ da loja. Obrigatório para assinar um plano.',
+  })
+  @IsOptional()
+  @IsString()
+  document?: string;
+
   @ApiPropertyOptional({ example: 'Av. Paulista, 1000' })
   @IsOptional()
   @IsString()

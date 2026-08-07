@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MAX_VEHICLE_IMAGES, vehiclesService } from "@/services/vehicles.service";
 import { getApiErrorMessage } from "@/services/api";
 import { useCompany } from "@/hooks/useCompany";
-import { fuelLabels, transmissionLabels, vehicleStatusLabels } from "@/utils/labels";
+import { fuelLabels, transmissionLabels, vehicleStatusLabels, vehicleTypeLabels } from "@/utils/labels";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { maskPlate, maskRenavam } from "@/lib/masks";
 import { optionalPlateSchema, optionalRenavamSchema } from "@/lib/form-schemas";
@@ -40,6 +40,7 @@ const optionalMoney = z.preprocess((value) => {
 
 const schema = z
   .object({
+    type: z.enum(["CAR", "MOTORCYCLE", "TRUCK"]),
     brand: z.string().min(1, "Informe a marca"),
     model: z.string().min(1, "Informe o modelo"),
     version: z.string().optional(),
@@ -96,13 +97,14 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema) as Resolver<FormValues>,
-    defaultValues: { fuel: "FLEX", transmission: "MANUAL", status: "AVAILABLE", doors: 4, mileage: 0 },
+    defaultValues: { type: "CAR", fuel: "FLEX", transmission: "MANUAL", status: "AVAILABLE", doors: 4, mileage: 0 },
   });
 
   React.useEffect(() => {
     if (open) {
       setTab("dados");
       reset({
+        type: vehicle?.type ?? "CAR",
         brand: vehicle?.brand ?? "",
         model: vehicle?.model ?? "",
         version: vehicle?.version ?? "",
@@ -214,6 +216,21 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
             <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
                 <div className="space-y-1.5">
+                  <Label>Tipo de veículo</Label>
+                  <Select value={watch("type")} onValueChange={(v) => setValue("type", v as FormValues["type"])}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(vehicleTypeLabels).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
                   <Label htmlFor="brand">Marca</Label>
                   <Input id="brand" {...register("brand")} placeholder="Toyota" />
                   {errors.brand && <p className="text-xs text-destructive">{errors.brand.message}</p>}
@@ -302,10 +319,12 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: VehicleFormDi
                   <Label htmlFor="mileage">Quilometragem</Label>
                   <Input id="mileage" type="number" inputMode="numeric" {...register("mileage")} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="doors">Portas</Label>
-                  <Input id="doors" type="number" inputMode="numeric" {...register("doors")} />
-                </div>
+                {watch("type") !== "MOTORCYCLE" && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="doors">Portas</Label>
+                    <Input id="doors" type="number" inputMode="numeric" {...register("doors")} />
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <Label htmlFor="plate">Placa</Label>

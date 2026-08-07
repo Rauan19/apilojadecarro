@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, Vehicle, VehicleImage } from '@prisma/client';
+import { Prisma, Vehicle, VehicleImage, VehicleType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export type VehicleWithImages = Vehicle & { images: VehicleImage[] };
@@ -9,6 +9,7 @@ export interface FindVehiclesParams {
   skip: number;
   take: number;
   search?: string;
+  type?: VehicleType;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }
@@ -51,7 +52,7 @@ export class VehiclesRepository {
   async findMany(
     params: FindVehiclesParams,
   ): Promise<{ items: VehicleWithImages[]; total: number }> {
-    const where = this.buildWhere(params.companyId, params.search);
+    const where = this.buildWhere(params.companyId, params.search, params.type);
     const sortBy = ALLOWED_SORT_FIELDS.includes(
       params.sortBy as (typeof ALLOWED_SORT_FIELDS)[number],
     )
@@ -136,17 +137,22 @@ export class VehiclesRepository {
   private buildWhere(
     companyId: string,
     search?: string,
+    type?: VehicleType,
   ): Prisma.VehicleWhereInput {
     const where: Prisma.VehicleWhereInput = { companyId };
+
+    if (type) {
+      where.type = type;
+    }
 
     if (search?.trim()) {
       const term = search.trim();
       where.OR = [
-        { brand: { contains: term } },
-        { model: { contains: term } },
-        { version: { contains: term } },
-        { plate: { contains: term } },
-        { color: { contains: term } },
+        { brand: { contains: term, mode: 'insensitive' } },
+        { model: { contains: term, mode: 'insensitive' } },
+        { version: { contains: term, mode: 'insensitive' } },
+        { plate: { contains: term, mode: 'insensitive' } },
+        { color: { contains: term, mode: 'insensitive' } },
       ];
     }
 

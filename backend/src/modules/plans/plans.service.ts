@@ -31,15 +31,36 @@ export class PlansService {
         maxUsers: dto.maxUsers ?? null,
         active: dto.active ?? true,
         sortOrder: dto.sortOrder ?? 0,
+        companyId: dto.companyId ?? null,
       },
     });
 
     return this.toResponse(plan);
   }
 
-  async findAll(activeOnly = false): Promise<PlanResponse[]> {
+  /**
+   * @param visibleToCompanyId visão do dono da loja: planos públicos + os
+   * exclusivos dessa empresa. `null` traz só os públicos; `undefined` traz
+   * tudo, inclusive exclusivos de outras lojas (visão do Super Admin).
+   */
+  async findAll(
+    activeOnly = false,
+    visibleToCompanyId?: string | null,
+  ): Promise<PlanResponse[]> {
+    const where: Prisma.SubscriptionPlanWhereInput = {};
+
+    if (activeOnly) {
+      where.active = true;
+    }
+
+    if (visibleToCompanyId !== undefined) {
+      where.OR = visibleToCompanyId
+        ? [{ companyId: null }, { companyId: visibleToCompanyId }]
+        : [{ companyId: null }];
+    }
+
     const plans = await this.prisma.subscriptionPlan.findMany({
-      where: activeOnly ? { active: true } : undefined,
+      where,
       orderBy: [{ sortOrder: 'asc' }, { priceMonthly: 'asc' }, { name: 'asc' }],
     });
 
@@ -81,6 +102,11 @@ export class PlansService {
     if (dto.maxUsers !== undefined) data.maxUsers = dto.maxUsers;
     if (dto.active !== undefined) data.active = dto.active;
     if (dto.sortOrder !== undefined) data.sortOrder = dto.sortOrder;
+    if (dto.companyId !== undefined) {
+      data.exclusiveTo = dto.companyId
+        ? { connect: { id: dto.companyId } }
+        : { disconnect: true };
+    }
 
     const plan = await this.prisma.subscriptionPlan.update({
       where: { id },

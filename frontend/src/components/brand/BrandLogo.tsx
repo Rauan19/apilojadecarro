@@ -85,8 +85,9 @@ export function BrandLogo({
         <SystemLogo size={size} markClassName={markClassName} />
       )}
 
-      {/* Logo do sistema já traz o wordmark — só mostra texto para loja ou subtitle */}
-      {showWordmark && showStore && (
+      {/* Nome ao lado só quando não há logo de verdade (fallback de iniciais) —
+          quando a loja já tem logo enviada, a imagem já carrega a identidade. */}
+      {showWordmark && showStore && !companyLogo && (
         <div className="flex min-w-0 flex-col leading-none">
           <span
             className={cn(

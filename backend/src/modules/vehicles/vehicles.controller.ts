@@ -25,10 +25,10 @@ import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CurrentUser, Roles } from '../../common/decorators';
-import { CompanyPaginationDto } from '../../common/dto/company-pagination.dto';
 import type { AuthenticatedUser } from '../../common/interfaces/auth.interface';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
+import { VehiclesQueryDto } from './dto/vehicles-query.dto';
 import { VehiclesService } from './vehicles.service';
 
 @ApiTags('Vehicles')
@@ -55,7 +55,7 @@ export class VehiclesController {
   @Roles(Role.SUPER_ADMIN, Role.STORE_ADMIN, Role.SELLER)
   @ApiOperation({ summary: 'Listar veículos paginados' })
   async findAll(
-    @Query() pagination: CompanyPaginationDto,
+    @Query() pagination: VehiclesQueryDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     const data = await this.vehiclesService.findAll(pagination, user);

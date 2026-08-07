@@ -8,13 +8,13 @@ import {
   buildPaginatedResult,
   PaginatedResult,
 } from '../../common/dto/pagination.dto';
-import { CompanyPaginationDto } from '../../common/dto/company-pagination.dto';
 import { AuthenticatedUser } from '../../common/interfaces/auth.interface';
 import { resolveTenantCompanyId } from '../../common/utils/tenant.util';
 import { LocalUploadProvider } from '../uploads/local-upload.provider';
 import { UploadsService } from '../uploads/uploads.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
+import { VehiclesQueryDto } from './dto/vehicles-query.dto';
 import {
   PlateLookupResult,
   PlateLookupService,
@@ -47,6 +47,7 @@ export class VehiclesService {
     const companyId = resolveTenantCompanyId(actor, queryCompanyId);
 
     return this.vehiclesRepository.create({
+      type: dto.type,
       brand: dto.brand,
       model: dto.model,
       version: dto.version,
@@ -73,7 +74,7 @@ export class VehiclesService {
   }
 
   async findAll(
-    pagination: CompanyPaginationDto,
+    pagination: VehiclesQueryDto,
     actor: AuthenticatedUser,
   ): Promise<PaginatedResult<VehicleWithImages>> {
     const companyId = resolveTenantCompanyId(actor, pagination.companyId);
@@ -86,6 +87,7 @@ export class VehiclesService {
       skip,
       take: limit,
       search: pagination.search,
+      type: pagination.type,
       sortBy: pagination.sortBy,
       sortOrder: pagination.sortOrder,
     });

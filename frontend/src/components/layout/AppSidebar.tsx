@@ -1,22 +1,22 @@
 import { NavLink } from "react-router-dom";
 import {
-  Building2,
-  Car,
-  FileText,
-  KeyRound,
-  LayoutDashboard,
-  Settings,
-  ScrollText,
-  Store,
-  Target,
-  UserCircle,
-  UserCog,
-  Users,
-  Users2,
-  Code2,
-  Tags,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+  IconCode,
+  IconCompanies,
+  IconCustomers,
+  IconLeads,
+  IconLogs,
+  IconOverview,
+  IconPlans,
+  IconProfile,
+  IconProposal,
+  IconSellers,
+  IconSettings,
+  IconStockRows,
+  IconTokens,
+  IconUsers,
+  IconVehicle,
+} from "@/components/icons/instrument-icons";
+import type { SVGProps } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { cn } from "@/lib/utils";
@@ -25,38 +25,38 @@ import type { Role } from "@/types";
 interface NavItem {
   label: string;
   to: string;
-  icon: LucideIcon;
+  icon: (props: SVGProps<SVGSVGElement>) => React.ReactElement;
 }
 
 const navByRole: Record<Role, NavItem[]> = {
   SUPER_ADMIN: [
-    { label: "Início", to: "/dashboard", icon: LayoutDashboard },
-    { label: "Clientes", to: "/empresas", icon: Building2 },
-    { label: "Planos", to: "/planos", icon: Tags },
-    { label: "Usuários", to: "/usuarios", icon: Users },
-    { label: "Tokens API", to: "/tokens-api", icon: KeyRound },
-    { label: "Logs", to: "/logs", icon: ScrollText },
-    { label: "Docs API", to: "/documentacao", icon: Code2 },
+    { label: "Início", to: "/dashboard", icon: IconOverview },
+    { label: "Clientes", to: "/empresas", icon: IconCompanies },
+    { label: "Planos", to: "/planos", icon: IconPlans },
+    { label: "Usuários", to: "/usuarios", icon: IconUsers },
+    { label: "Tokens API", to: "/tokens-api", icon: IconTokens },
+    { label: "Logs", to: "/logs", icon: IconLogs },
+    { label: "Docs API", to: "/documentacao", icon: IconCode },
   ],
   STORE_ADMIN: [
-    { label: "Início", to: "/dashboard", icon: LayoutDashboard },
-    { label: "Veículos", to: "/veiculos", icon: Car },
-    { label: "Ver meu estoque", to: "/meu-estoque", icon: Store },
-    { label: "Clientes", to: "/clientes", icon: Users2 },
-    { label: "Leads", to: "/leads", icon: Target },
-    { label: "Propostas", to: "/propostas", icon: FileText },
-    { label: "Vendedores", to: "/vendedores", icon: UserCog },
-    { label: "Usuários", to: "/usuarios", icon: Users },
-    { label: "Configurações", to: "/configuracoes", icon: Settings },
+    { label: "Início", to: "/dashboard", icon: IconOverview },
+    { label: "Veículos", to: "/veiculos", icon: IconVehicle },
+    { label: "Ver meu estoque", to: "/meu-estoque", icon: IconStockRows },
+    { label: "Clientes", to: "/clientes", icon: IconCustomers },
+    { label: "Leads", to: "/leads", icon: IconLeads },
+    { label: "Propostas", to: "/propostas", icon: IconProposal },
+    { label: "Vendedores", to: "/vendedores", icon: IconSellers },
+    { label: "Usuários", to: "/usuarios", icon: IconUsers },
+    { label: "Configurações", to: "/configuracoes", icon: IconSettings },
   ],
   SELLER: [
-    { label: "Início", to: "/dashboard", icon: LayoutDashboard },
-    { label: "Veículos", to: "/veiculos", icon: Car },
-    { label: "Ver meu estoque", to: "/meu-estoque", icon: Store },
-    { label: "Clientes", to: "/clientes", icon: Users2 },
-    { label: "Leads", to: "/leads", icon: Target },
-    { label: "Propostas", to: "/propostas", icon: FileText },
-    { label: "Perfil", to: "/perfil", icon: UserCircle },
+    { label: "Início", to: "/dashboard", icon: IconOverview },
+    { label: "Veículos", to: "/veiculos", icon: IconVehicle },
+    { label: "Ver meu estoque", to: "/meu-estoque", icon: IconStockRows },
+    { label: "Clientes", to: "/clientes", icon: IconCustomers },
+    { label: "Leads", to: "/leads", icon: IconLeads },
+    { label: "Propostas", to: "/propostas", icon: IconProposal },
+    { label: "Perfil", to: "/perfil", icon: IconProfile },
   ],
 };
 
@@ -78,9 +78,9 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             className={({ isActive }) =>
               cn(
-                "group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
+                "group relative flex min-h-11 items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150",
                 isActive
-                  ? "bg-primary/10 text-primary shadow-none"
+                  ? "bg-primary/[0.07] text-primary"
                   : "text-sidebar-foreground/70 hover:bg-secondary hover:text-sidebar-foreground"
               )
             }
@@ -96,6 +96,9 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                   )}
                 />
                 {item.label}
+                {isActive && (
+                  <span className="ml-auto h-1.5 w-1.5 shrink-0 bg-primary" aria-hidden />
+                )}
               </>
             )}
           </NavLink>

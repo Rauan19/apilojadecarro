@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { FuelType, Transmission, VehicleStatus } from '@prisma/client';
+import { FuelType, Transmission, VehicleStatus, VehicleType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsEnum,
@@ -12,6 +12,11 @@ import {
 } from 'class-validator';
 
 export class CreateVehicleDto {
+  @ApiPropertyOptional({ enum: VehicleType, default: VehicleType.CAR })
+  @IsOptional()
+  @IsEnum(VehicleType)
+  type?: VehicleType;
+
   @ApiProperty({ example: 'Toyota' })
   @IsString()
   @MinLength(1)

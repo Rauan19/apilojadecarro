@@ -15,7 +15,7 @@ import {
 import { Role } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
-import { CurrentUser, Roles } from '../../common/decorators';
+import { AllowWhenBlocked, CurrentUser, Roles } from '../../common/decorators';
 import type { AuthenticatedUser } from '../../common/interfaces/auth.interface';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { SettingsService } from './settings.service';
@@ -29,6 +29,9 @@ export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
   @Get()
+  // A tela de bloqueio mostra nome e logo da loja, e o CPF/CNPJ é pré-requisito
+  // da cobrança — ler configurações precisa continuar valendo.
+  @AllowWhenBlocked()
   @ApiOperation({ summary: 'Obter configurações da empresa' })
   @ApiQuery({ name: 'companyId', required: false })
   async getSettings(
@@ -40,6 +43,9 @@ export class SettingsController {
   }
 
   @Patch()
+  // Loja bloqueada sem CPF/CNPJ cadastrado não conseguiria emitir o PIX; sem
+  // isso ela ficaria travada sem saída.
+  @AllowWhenBlocked()
   @ApiOperation({ summary: 'Atualizar configurações da empresa' })
   @ApiQuery({ name: 'companyId', required: false })
   async updateSettings(

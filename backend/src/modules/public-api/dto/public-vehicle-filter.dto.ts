@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { FuelType, Transmission } from '@prisma/client';
+import { FuelType, Transmission, VehicleType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsEnum,
@@ -12,6 +12,11 @@ import {
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 export class PublicVehicleFilterDto extends PaginationDto {
+  @ApiPropertyOptional({ enum: VehicleType })
+  @IsOptional()
+  @IsEnum(VehicleType)
+  type?: VehicleType;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

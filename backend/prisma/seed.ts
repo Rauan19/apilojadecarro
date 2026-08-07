@@ -150,7 +150,7 @@ async function main(): Promise<void> {
     data: {
       name: 'AutoPrime Veículos',
       slug: 'autoprme',
-      document: '12.345.678/0001-90',
+      document: '12.345.678/0001-95',
       email: 'contato@autoprme.com.br',
       phone: '(11) 3456-7890',
       address: 'Av. Paulista, 1000',
@@ -471,7 +471,7 @@ async function main(): Promise<void> {
     data: {
       name: 'Ribeiro Car',
       slug: 'ribeirocar',
-      document: '98.765.432/0001-10',
+      document: '98.765.432/0001-98',
       email: 'contato@ribeirocar.com.br',
       phone: '(11) 3333-4455',
       address: 'Av. Brasil, 2500',

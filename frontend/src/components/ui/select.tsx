@@ -1,7 +1,22 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+function ChevronDown({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="square" aria-hidden>
+      <path d="M6 9.5 12 15.5 18 9.5" />
+    </svg>
+  );
+}
+
+function Check({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="square" strokeLinejoin="miter" aria-hidden>
+      <path d="M5 12.5 9.5 17 19 7" />
+    </svg>
+  );
+}
 
 interface SelectContextValue {
   value?: string;
@@ -74,7 +89,7 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
           ctx.setOpen(!ctx.open);
         }}
         className={cn(
-          "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+          "flex h-10 w-full items-center justify-between gap-2 border border-input bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:border-foreground/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
           className
         )}
         {...props}
@@ -163,7 +178,7 @@ const SelectContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
           pointerEvents: ctx.open ? "auto" : "none",
         }}
         className={cn(
-          "z-[100] max-h-64 overflow-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-fade-in",
+          "z-[100] max-h-64 overflow-auto border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-fade-in",
           className
         )}
         onPointerDown={(e) => e.stopPropagation()}
@@ -204,7 +219,7 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
           setOpen(false);
         }}
         className={cn(
-          "relative flex cursor-pointer select-none items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-secondary focus:bg-secondary",
+          "relative flex cursor-pointer select-none items-center justify-between gap-2 px-2 py-1.5 text-sm outline-none transition-colors hover:bg-secondary focus:bg-secondary",
           selected && "font-medium",
           disabled && "pointer-events-none opacity-50",
           className

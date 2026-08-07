@@ -26,7 +26,10 @@
     "db:up": "node scripts/db-compose.js up -d",
     "db:down": "node scripts/db-compose.js down",
     "db:setup": "node scripts/db-compose.js up -d && prisma migrate deploy && ts-node prisma/seed.ts",
-    "db:reset": "prisma migrate reset --force"
+    "db:reset": "prisma migrate reset --force",
+    "billing:reset": "node scripts/billing-reset.js",
+    "billing:pay": "ts-node scripts/billing-simulate-payment.ts",
+    "billing:mp-check": "ts-node scripts/billing-mp-check.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -38,6 +41,7 @@
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/schedule": "^6.1.3",
     "@nestjs/swagger": "^11.4.6",
     "@nestjs/throttler": "^6.5.0",
     "@prisma/client": "^6.19.3",

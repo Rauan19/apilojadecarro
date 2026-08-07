@@ -39,9 +39,19 @@ function clearSession() {
   localStorage.removeItem(USER_KEY);
 }
 
+/** Evento disparado quando a API recusa por assinatura pendente (402). */
+export const SUBSCRIPTION_BLOCKED_EVENT = "subscription:blocked";
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
+    // 402 é cobrança, não sessão expirada: não pode cair no fluxo de refresh
+    // nem deslogar — o usuário precisa continuar logado para pagar.
+    if (error.response?.status === 402) {
+      window.dispatchEvent(new CustomEvent(SUBSCRIPTION_BLOCKED_EVENT));
+      return Promise.reject(error);
+    }
+
     const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
 
     if (
