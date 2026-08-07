@@ -112,7 +112,7 @@ export function SettingsPage() {
     mutationFn: () => whatsappService.disconnect(companyId),
     onSuccess: (result) => {
       queryClient.setQueryData(["whatsapp-status", companyId], result);
-      toast.success("WhatsApp desconectado");
+      toast.success("Sessão WhatsApp apagada — pode conectar de novo");
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -813,7 +813,21 @@ export function SettingsPage() {
                 )}
 
                 <div className="flex flex-col gap-2 pt-1 sm:flex-row">
-                  {whatsappStatus?.connected ? (
+                  {!whatsappStatus?.connected && (
+                    <Button
+                      type="button"
+                      loading={whatsappConnectMutation.isPending}
+                      onClick={() => whatsappConnectMutation.mutate()}
+                    >
+                      {whatsappStatus?.qrcode ? "Gerar novo QR Code" : "Conectar"}
+                    </Button>
+                  )}
+                  {/* Aparece também com QR / sessão pendente — sem isso fica preso
+                      gerando QR sem poder zerar a instância na Evolution. */}
+                  {(whatsappStatus?.connected ||
+                    whatsappStatus?.instanceName ||
+                    whatsappStatus?.qrcode ||
+                    whatsappStatus?.status === "connecting") && (
                     <Button
                       type="button"
                       variant="outline"
@@ -821,15 +835,7 @@ export function SettingsPage() {
                       loading={whatsappDisconnectMutation.isPending}
                       onClick={() => whatsappDisconnectMutation.mutate()}
                     >
-                      Desconectar
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      loading={whatsappConnectMutation.isPending}
-                      onClick={() => whatsappConnectMutation.mutate()}
-                    >
-                      {whatsappStatus?.qrcode ? "Gerar novo QR Code" : "Conectar"}
+                      {whatsappStatus?.connected ? "Desconectar" : "Apagar sessão"}
                     </Button>
                   )}
                 </div>

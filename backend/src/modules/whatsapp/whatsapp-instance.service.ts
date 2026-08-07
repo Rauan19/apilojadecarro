@@ -143,11 +143,10 @@ export class WhatsappInstanceService {
   ): Promise<WhatsappStatusResponse> {
     const company = await this.findCompanyForUser(user, companyIdParam);
     const bot = this.readBotSettings(company.settings);
+    const instanceName = bot.instanceName ?? this.buildInstanceName(company.slug);
 
-    if (bot.instanceName) {
-      await this.evolution.logout(bot.instanceName);
-      await this.evolution.deleteInstance(bot.instanceName);
-    }
+    await this.evolution.logout(instanceName);
+    await this.evolution.deleteInstance(instanceName);
 
     await this.patchBotSettings(company.id, company.settings, {
       instanceName: undefined,
