@@ -83,6 +83,12 @@ interface StockVehicle {
   year: number;
   price: number;
   mileage?: number | null;
+  fuel?: string | null;
+  transmission?: string | null;
+  color?: string | null;
+  description?: string | null;
+  /** JSON array em string, ex: `["Teto solar","Couro"]` */
+  optionals?: string | null;
   images?: Array<{ url: string; order?: number }>;
 }
 
@@ -430,14 +436,9 @@ export class WhatsappBotService {
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
       .slice(0, MAX_PHOTOS_PER_VEHICLE);
 
-    const caption = this.formatVehicleLine(vehicle, 0).replace(/^0\.\s*/, '');
+    // Specs primeiro em texto; fotos vêm em seguida (sem caption).
+    await this.sendTracked(instanceName, remoteJid, this.formatVehicleDetailText(vehicle));
 
-    if (!images.length) {
-      await this.sendTracked(instanceName, remoteJid, caption);
-      return;
-    }
-
-    let sentPhoto = false;
     for (let i = 0; i < images.length; i += 1) {
       const mediaUrl = this.resolvePublicMediaUrl(images[i].url);
       if (!mediaUrl) {
@@ -454,22 +455,14 @@ export class WhatsappBotService {
         const id = await this.evolution.sendMedia(instanceName, {
           number,
           media: mediaUrl,
-          caption: !sentPhoto ? caption : undefined,
           fileName,
         });
         this.sessions.registerBotSentMessage(instanceName, id);
-        sentPhoto = true;
       } catch (error) {
         this.logger.warn(
           `Falha ao enviar foto do veículo ${vehicleId} (${mediaUrl}): ${error}`,
         );
       }
-    }
-
-    // Se nenhuma foto foi, ainda manda as specs em texto (VPS sem URL pública
-    // quebrava o sendMedia e o cliente ficava sem informação nenhuma).
-    if (!sentPhoto) {
-      await this.sendTracked(instanceName, remoteJid, caption);
     }
   }
 
@@ -547,6 +540,81 @@ export class WhatsappBotService {
         : '';
     const prefix = index > 0 ? `${index}. ` : '';
     return `${prefix}${vehicle.brand} ${vehicle.model}${version} (${vehicle.year})${km}\n   ${this.formatPrice(vehicle.price)}`;
+  }
+
+  /** Mensagem completa de specs — enviada antes das fotos. */
+  private formatVehicleDetailText(vehicle: StockVehicle): string {
+    const title = [vehicle.brand, vehicle.model, vehicle.version]
+      .filter(Boolean)
+      .join(' ');
+    const lines = [
+      `🚗 *${title}*`,
+      `📅 Ano: *${vehicle.year}*`,
+      `💰 Preço: *${this.formatPrice(vehicle.price)}*`,
+    ];
+
+    if (typeof vehicle.mileage === 'number' && vehicle.mileage > 0) {
+      lines.push(`🛣️ Km: *${vehicle.mileage.toLocaleString('pt-BR')}*`);
+    }
+    if (vehicle.fuel) {
+      lines.push(`⛽ Combustível: *${this.labelFuel(vehicle.fuel)}*`);
+    }
+    if (vehicle.transmission) {
+      lines.push(`⚙️ Câmbio: *${this.labelTransmission(vehicle.transmission)}*`);
+    }
+    if (vehicle.color?.trim()) {
+      lines.push(`🎨 Cor: *${vehicle.color.trim()}*`);
+    }
+
+    const optionals = this.parseOptionals(vehicle.optionals);
+    if (optionals.length > 0) {
+      lines.push('', '*Opcionais:*');
+      for (const item of optionals) {
+        lines.push(`• ${item}`);
+      }
+    }
+
+    if (vehicle.description?.trim()) {
+      lines.push('', vehicle.description.trim());
+    }
+
+    return lines.join('\n');
+  }
+
+  private parseOptionals(raw: string | null | undefined): string[] {
+    if (!raw?.trim()) return [];
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .map((item) => String(item).trim())
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
+  private labelFuel(fuel: string): string {
+    const map: Record<string, string> = {
+      FLEX: 'Flex',
+      GASOLINE: 'Gasolina',
+      ETHANOL: 'Etanol',
+      DIESEL: 'Diesel',
+      ELECTRIC: 'Elétrico',
+      HYBRID: 'Híbrido',
+      GNV: 'GNV',
+    };
+    return map[fuel] ?? fuel;
+  }
+
+  private labelTransmission(transmission: string): string {
+    const map: Record<string, string> = {
+      MANUAL: 'Manual',
+      AUTOMATIC: 'Automático',
+      CVT: 'CVT',
+      DCT: 'DCT',
+    };
+    return map[transmission] ?? transmission;
   }
 
   private formatPrice(value: number): string {
