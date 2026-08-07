@@ -115,7 +115,26 @@ export function PublicStoreLayout() {
   const locationLabel = company?.city ?? "";
   const businessHours = settings.businessHours ? String(settings.businessHours) : "";
   const socialLinks = getActiveSocialLinks(settings.social);
-  const brandStyle = buildBrandThemeStyle(settings.theme?.primaryColor);
+  const storePrimaryColor = settings.theme?.primaryColor as string | undefined;
+  const brandStyle = buildBrandThemeStyle(storePrimaryColor);
+  // Portais (Sheet do filtro, Dialog, etc.) renderizam em document.body e
+  // ficariam com o vermelho padrão do app se as vars ficassem só neste div.
+  React.useEffect(() => {
+    const vars = buildBrandThemeStyle(storePrimaryColor);
+    if (!vars) return;
+    const root = document.documentElement;
+    const previous = new Map<string, string>();
+    for (const [key, value] of Object.entries(vars)) {
+      previous.set(key, root.style.getPropertyValue(key));
+      root.style.setProperty(key, value);
+    }
+    return () => {
+      for (const [key, value] of previous) {
+        if (value) root.style.setProperty(key, value);
+        else root.style.removeProperty(key);
+      }
+    };
+  }, [storePrimaryColor]);
   const waHref = whatsapp ? `https://wa.me/${whatsapp}` : undefined;
   const telHref = company?.phone ? `tel:${company.phone.replace(/[^\d+]/g, "")}` : undefined;
 

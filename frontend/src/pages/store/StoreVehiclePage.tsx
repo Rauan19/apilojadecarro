@@ -10,17 +10,11 @@ import { ImageLightbox } from "@/components/store/ImageLightbox";
 import {
   StoreCalendarIcon,
   StoreCarIcon,
-  StoreCheckIcon,
   StoreChevronLeftIcon,
   StoreChevronRightIcon,
-  StoreColorIcon,
-  StoreDoorIcon,
   StoreExpandIcon,
-  StoreFuelIcon,
-  StoreGearIcon,
   StorePhoneIcon,
   StoreSendIcon,
-  StoreSpeedIcon,
   StoreWhatsAppIcon,
 } from "@/components/store/StoreIcons";
 import { publicService } from "@/services/public.service";
@@ -181,12 +175,12 @@ export function StoreVehiclePage() {
 
   const images = (vehicle.images ?? []).slice(0, 5);
   const specs = [
-    { icon: StoreSpeedIcon, label: "Quilometragem", value: `${formatNumber(vehicle.mileage)} km` },
-    { icon: StoreFuelIcon, label: "Combustível", value: fuelLabels[vehicle.fuel] },
-    { icon: StoreGearIcon, label: "Câmbio", value: transmissionLabels[vehicle.transmission] },
-    { icon: StoreDoorIcon, label: "Portas", value: `${vehicle.doors}` },
-    ...(vehicle.color ? [{ icon: StoreColorIcon, label: "Cor", value: vehicle.color }] : []),
-    { icon: StoreCalendarIcon, label: "Ano", value: `${vehicle.year}/${vehicle.yearModel}` },
+    { label: "Quilometragem", value: `${formatNumber(vehicle.mileage)} km` },
+    { label: "Combustível", value: fuelLabels[vehicle.fuel] },
+    { label: "Câmbio", value: transmissionLabels[vehicle.transmission] },
+    { label: "Portas", value: `${vehicle.doors}` },
+    ...(vehicle.color ? [{ label: "Cor", value: vehicle.color }] : []),
+    { label: "Ano", value: `${vehicle.year}/${vehicle.yearModel}` },
   ];
 
   const optionals = parseOptionals(vehicle.optionals);
@@ -314,15 +308,17 @@ export function StoreVehiclePage() {
 
           <div className="mt-5 rounded-lg border border-border bg-white p-3.5 sm:mt-6 sm:p-5">
             <h2 className="font-display text-base font-bold">Ficha técnica</h2>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:gap-3 sm:grid-cols-3">
+            <dl className="mt-3 divide-y divide-[#eee] border-y border-[#eee] sm:mt-4">
               {specs.map((spec) => (
-                <div key={spec.label} className="rounded-md bg-[#f5f5f5] px-2.5 py-2 sm:px-3 sm:py-2.5">
-                  <spec.icon className="mb-1 h-4 w-4 text-[#2e2e2e]" />
-                  <p className="text-[10px] text-[#696969] sm:text-[11px]">{spec.label}</p>
-                  <p className="text-sm font-semibold leading-snug text-[#2e2e2e]">{spec.value}</p>
+                <div
+                  key={spec.label}
+                  className="flex items-baseline justify-between gap-4 py-2.5 sm:py-3"
+                >
+                  <dt className="text-sm text-[#696969]">{spec.label}</dt>
+                  <dd className="text-right text-sm font-semibold text-[#2e2e2e]">{spec.value}</dd>
                 </div>
               ))}
-            </div>
+            </dl>
 
             {vehicle.description && (
               <div className="mt-5">
@@ -336,10 +332,9 @@ export function StoreVehiclePage() {
             {optionals.length > 0 && (
               <div className="mt-5">
                 <h3 className="mb-2 text-sm font-bold">Itens e opcionais</h3>
-                <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                <ul className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
                   {optionals.map((item) => (
-                    <li key={item} className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <StoreCheckIcon className="h-3.5 w-3.5 shrink-0 text-success" />
+                    <li key={item} className="text-sm text-muted-foreground">
                       {item}
                     </li>
                   ))}
@@ -371,7 +366,6 @@ export function StoreVehiclePage() {
               <ShareVehicleButton
                 className="w-full font-semibold"
                 title={`${vehicle.brand} ${vehicle.model} ${vehicle.year}`}
-                text={`Olha este ${vehicle.brand} ${vehicle.model} por ${formatCurrency(vehicle.price)}`}
               />
               {whatsapp ? (
                 <a

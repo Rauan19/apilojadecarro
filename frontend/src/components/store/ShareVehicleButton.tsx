@@ -4,16 +4,15 @@ import { Button } from "@/components/ui/button";
 import { StoreCheckIcon, StoreLinkIcon, StoreShareIcon } from "@/components/store/StoreIcons";
 
 interface ShareVehicleButtonProps {
-  title: string;
-  text?: string;
+  /** Só para acessibilidade / fallback visual — o share envia apenas a URL. */
+  title?: string;
   url?: string;
   className?: string;
   variant?: "default" | "outline" | "secondary" | "ghost";
 }
 
 export function ShareVehicleButton({
-  title,
-  text,
+  title = "Veículo",
   url,
   className,
   variant = "outline",
@@ -25,13 +24,11 @@ export function ShareVehicleButton({
   const share = async () => {
     if (!shareUrl) return;
 
+    // Só a URL: Instagram e outros apps do celular rejeitam/ignoram
+    // quando vem texto + link colados.
     if (canNativeShare) {
       try {
-        await navigator.share({
-          title,
-          text: text || title,
-          url: shareUrl,
-        });
+        await navigator.share({ url: shareUrl });
         return;
       } catch (error) {
         if ((error as Error).name === "AbortError") return;
@@ -49,7 +46,13 @@ export function ShareVehicleButton({
   };
 
   return (
-    <Button type="button" variant={variant} className={className} onClick={share}>
+    <Button
+      type="button"
+      variant={variant}
+      className={className}
+      onClick={share}
+      aria-label={`Compartilhar ${title}`}
+    >
       {copied ? (
         <StoreCheckIcon className="h-4 w-4" />
       ) : canNativeShare ? (
