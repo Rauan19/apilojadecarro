@@ -146,12 +146,21 @@ export class EvolutionApiClient {
     instanceName: string,
     params: { number: string; media: string; caption?: string; fileName?: string },
   ): Promise<string | null> {
+    const fileName = params.fileName || 'image.jpg';
+    const lower = fileName.toLowerCase();
+    const mimetype = lower.endsWith('.png')
+      ? 'image/png'
+      : lower.endsWith('.webp')
+        ? 'image/webp'
+        : 'image/jpeg';
+
     const res = await this.request<EvolutionSendResponse>('POST', `/message/sendMedia/${instanceName}`, {
       number: params.number,
       mediatype: 'image',
+      mimetype,
       media: params.media,
       caption: params.caption,
-      fileName: params.fileName,
+      fileName,
     });
     return res.key?.id ?? null;
   }

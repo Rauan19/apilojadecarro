@@ -430,35 +430,77 @@ export class WhatsappBotService {
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
       .slice(0, MAX_PHOTOS_PER_VEHICLE);
 
+    const caption = this.formatVehicleLine(vehicle, 0).replace(/^0\.\s*/, '');
+
     if (!images.length) {
-      await this.sendTracked(
-        instanceName,
-        remoteJid,
-        this.formatVehicleLine(vehicle, 0).replace(/^0\.\s*/, ''),
-      );
+      await this.sendTracked(instanceName, remoteJid, caption);
       return;
     }
 
-    const mediaBase = this.config
-      .get<string>('EVOLUTION_MEDIA_BASE_URL', 'http://host.docker.internal:3000')
-      .replace(/\/$/, '');
-    const caption = this.formatVehicleLine(vehicle, 0).replace(/^0\.\s*/, '');
-
+    let sentPhoto = false;
     for (let i = 0; i < images.length; i += 1) {
-      const path = images[i].url.startsWith('http')
-        ? images[i].url
-        : `${mediaBase}/${images[i].url.replace(/^\//, '')}`;
+      const mediaUrl = this.resolvePublicMediaUrl(images[i].url);
+      if (!mediaUrl) {
+        this.logger.warn(
+          `URL de mídia inválida no veículo ${vehicleId}: "${images[i].url}"`,
+        );
+        continue;
+      }
+
       try {
+        const fileName =
+          mediaUrl.split('/').pop()?.split('?')[0] || `veiculo-${i + 1}.jpg`;
         const id = await this.evolution.sendMedia(instanceName, {
           number,
-          media: path,
-          caption: i === 0 ? caption : undefined,
+          media: mediaUrl,
+          caption: !sentPhoto ? caption : undefined,
+          fileName,
         });
         this.sessions.registerBotSentMessage(instanceName, id);
+        sentPhoto = true;
       } catch (error) {
-        this.logger.warn(`Falha ao enviar foto do veículo ${vehicleId}: ${error}`);
+        this.logger.warn(
+          `Falha ao enviar foto do veículo ${vehicleId} (${mediaUrl}): ${error}`,
+        );
       }
     }
+
+    // Se nenhuma foto foi, ainda manda as specs em texto (VPS sem URL pública
+    // quebrava o sendMedia e o cliente ficava sem informação nenhuma).
+    if (!sentPhoto) {
+      await this.sendTracked(instanceName, remoteJid, caption);
+    }
+  }
+
+  /**
+   * Evolution só aceita http(s) ou base64. Paths relativos do banco
+   * (`/uploads/...`) precisam do host público da API.
+   */
+  private resolvePublicMediaUrl(raw: string | null | undefined): string | null {
+    const value = (raw ?? '').trim();
+    if (!value) return null;
+
+    if (/^https?:\/\//i.test(value)) {
+      return value;
+    }
+
+    const base = (
+      this.config.get<string>('EVOLUTION_MEDIA_BASE_URL') ||
+      this.config.get<string>('APP_URL') ||
+      ''
+    )
+      .trim()
+      .replace(/\/$/, '');
+
+    if (!base || !/^https?:\/\//i.test(base)) {
+      this.logger.warn(
+        `EVOLUTION_MEDIA_BASE_URL/APP_URL ausente ou inválido ("${base}"). ` +
+          'Defina https://api.seu-dominio.com no .env',
+      );
+      return null;
+    }
+
+    return `${base}/${value.replace(/^\//, '')}`;
   }
 
   private async createLead(
