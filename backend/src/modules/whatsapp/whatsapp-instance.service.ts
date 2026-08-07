@@ -100,7 +100,15 @@ export class WhatsappInstanceService {
       await this.evolution.createInstance({ instanceName, webhookUrl });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      if (!message.toLowerCase().includes('exist') && !message.includes('409')) {
+      const lower = message.toLowerCase();
+      // Evolution 2.3+ devolve 403 "already in use"; versões antigas usam 409/exist.
+      const alreadyExists =
+        lower.includes('already in use') ||
+        lower.includes('in use') ||
+        lower.includes('already exists') ||
+        lower.includes('exist') ||
+        message.includes('409');
+      if (!alreadyExists) {
         throw error;
       }
       // instância já existe: segue para buscar o QR
